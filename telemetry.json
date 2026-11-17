@@ -1,0 +1,1 @@
+{"v": 1, "usage": {"enabled": true, "minMinutes": 60, "sample": 1.0}, "reports": {"enabled": true, "perDay": 3, "fullLog": true}}

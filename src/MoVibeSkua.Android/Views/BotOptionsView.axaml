@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:MoVibeSkua.Android.ViewModels"
+             xmlns:v="clr-namespace:MoVibeSkua.Android.Views"
+             x:Class="MoVibeSkua.Android.Views.BotOptionsView"
+             x:DataType="vm:BotOptionsViewModel">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.bo-step">
+            <Setter Property="Foreground" Value="#F7C948" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="LineHeight" Value="20" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+        <Style Selector="Expander.bo-section">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <Style Selector="TextBlock.bo-fold">
+            <Setter Property="Foreground" Value="#F7C948" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Black" />
+            <Setter Property="LetterSpacing" Value="0.6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.bo-head">
+            <Setter Property="Foreground" Value="#C9A447" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="LetterSpacing" Value="0.4" />
+        </Style>
+    </UserControl.Styles>
+    <ThemeVariantScope RequestedThemeVariant="Dark">
+        <Border Classes="aqw-page">
+            <v:InfoHost>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10,8,10,12">
+                        <Expander Classes="bo-section" IsExpanded="True">
+                            <Expander.Header>
+                                <TextBlock Classes="bo-fold" Text="BEST ENHANCEMENTS" />
+                            </Expander.Header>
+                            <StackPanel>
+                        <v:InfoText Classes="page-text" Margin="0,0,0,6"
+                                    Markup="Puts the best [enh|enhancements] for your class on your gear." />
+                        <Grid ColumnDefinitions="22,*" Margin="0,0,0,4">
+                            <TextBlock Classes="bo-step" Text="1." />
+                            <TextBlock Grid.Column="1" Classes="page-text" Text="Pick what you are gearing for." />
+                        </Grid>
+                        <ListBox Classes="segmented" Margin="0,0,0,8" HorizontalAlignment="Left"
+                                 ItemsSource="{Binding UseCases}" SelectedItem="{Binding UseCase}" />
+                        <Grid ColumnDefinitions="22,*" Margin="0,0,0,4">
+                            <TextBlock Classes="bo-step" Text="2." />
+                            <v:InfoText Grid.Column="1" Classes="page-text" Markup="Tap *Read my gear*." />
+                        </Grid>
+                        <Button Classes="guide-jump" HorizontalAlignment="Stretch" Content="Read my gear" Command="{Binding ReadGearCommand}" />
+                        <TextBlock Classes="page-sub" Margin="0,4,0,8" Text="{Binding ReadInfo}" />
+                        <Grid ColumnDefinitions="22,*" Margin="0,0,0,4">
+                            <TextBlock Classes="bo-step" Text="3." />
+                            <TextBlock Grid.Column="1" Classes="page-text" Text="Tick the pieces you want changed." />
+                        </Grid>
+                        <Grid ColumnDefinitions="40,1.3*,*,*,1.1*" ColumnSpacing="6" Margin="10,0,10,4">
+                            <TextBlock Grid.Column="1" Classes="bo-head" Text="ITEM" />
+                            <TextBlock Grid.Column="2" Classes="bo-head" Text="NOW" />
+                            <TextBlock Grid.Column="3" Classes="bo-head" Text="BEST" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Rows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:GearRowViewModel">
+                                    <Border Classes="page-card">
+                                        <Grid ColumnDefinitions="40,1.3*,*,*,1.1*" ColumnSpacing="6">
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding Ticked}" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Classes="page-name" Text="{Binding Label}" />
+                                                <TextBlock Classes="page-sub" Text="{Binding Item}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding Now}" TextWrapping="Wrap" VerticalAlignment="Center" FontSize="13" />
+                                            <TextBlock Grid.Column="3" Text="{Binding BestText}" TextWrapping="Wrap" VerticalAlignment="Center" FontSize="13" />
+                                            <TextBlock Grid.Column="4" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                       FontSize="13" FontWeight="SemiBold" Foreground="{Binding StatusColor}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Grid ColumnDefinitions="22,*" Margin="0,4,0,4">
+                            <TextBlock Classes="bo-step" Text="4." />
+                            <v:InfoText Grid.Column="1" Classes="page-text" Markup="Tap *Enhance ticked items now*." />
+                        </Grid>
+                        <Button Classes="guide-action" HorizontalAlignment="Stretch" Content="Enhance ticked items now"
+                                Command="{Binding EnhanceNowCommand}" />
+                        <TextBlock Classes="page-sub" Margin="0,4,0,0" Text="{Binding ToChange}" />
+                        <TextBlock Classes="page-sub" Text="{Binding LastResult}" />
+                        <Border Classes="page-row" BorderThickness="0">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Before each script" />
+                                    <TextBlock Classes="page-sub" Text="Does this by itself when a script starts." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoEnhance}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-note">
+                            <v:InfoText Lead="Note: "
+                                        Markup="Unticked pieces are never touched. A [locked|locked] best enhancement is named, not used. [best|Where &quot;best&quot; comes from]" />
+                        </Border>
+                            </StackPanel>
+                        </Expander>
+                        <Expander Classes="bo-section" IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Classes="bo-fold" Text="GAME OPTIONS" />
+                            </Expander.Header>
+                            <ContentControl Content="{Binding GameOptions}" />
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
+            </v:InfoHost>
+        </Border>
+    </ThemeVariantScope>
+</UserControl>

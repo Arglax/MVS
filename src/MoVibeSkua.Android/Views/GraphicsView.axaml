@@ -1,0 +1,176 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:MoVibeSkua.Android.ViewModels"
+             xmlns:v="clr-namespace:MoVibeSkua.Android.Views"
+             x:Class="MoVibeSkua.Android.Views.GraphicsView"
+             x:DataType="vm:GraphicsViewModel">
+    <ThemeVariantScope RequestedThemeVariant="Dark">
+        <Border Classes="aqw-page">
+            <v:InfoHost>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="10,8,10,12">
+                        <Border Classes="page-band" Margin="0,2,0,8"><TextBlock Text="PRESETS" /></Border>
+                        <TextBlock Classes="page-text" Margin="0,0,0,6" Text="One tap sets everything below." />
+                        <UniformGrid Rows="1" Margin="-3,0,-3,2">
+                            <Button Classes="guide-jump" Margin="3,0" Padding="2,4" HorizontalAlignment="Stretch" Content="Battery" Command="{Binding ApplyPresetCommand}" CommandParameter="battery" />
+                            <Button Classes="guide-jump" Margin="3,0" Padding="2,4" HorizontalAlignment="Stretch" Content="Balanced" Command="{Binding ApplyPresetCommand}" CommandParameter="balanced" />
+                            <Button Classes="guide-jump" Margin="3,0" Padding="2,4" HorizontalAlignment="Stretch" Content="Quality" Command="{Binding ApplyPresetCommand}" CommandParameter="quality" />
+                            <Button Classes="guide-jump" Margin="3,0" Padding="2,4" HorizontalAlignment="Stretch" Content="Ultra" Command="{Binding ApplyPresetCommand}" CommandParameter="ultra" />
+                        </UniformGrid>
+                        <Border Classes="page-note"><v:InfoText Lead="Note: " Markup="*Ultra* needs a strong phone." /></Border>
+                        <Border Classes="page-band"><TextBlock Text="SMOOTHNESS" /></Border>
+                        <Border Classes="page-row">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Show game FPS" />
+                                    <v:InfoText Classes="page-sub" Markup="An [fps|FPS] of 30 or more is good." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowFps}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Smooth motion" />
+                                    <TextBlock Classes="page-sub" Text="Walking and sliding look like 60 FPS." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding SmoothMotion}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row" BorderThickness="0">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Auto smooth" />
+                                    <TextBlock Classes="page-sub" Text="Lowers graphics only while the game struggles." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoSmooth}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-band"><TextBlock Text="HEAT" /></Border>
+                        <Border Classes="page-row">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Performance Guard" />
+                                    <v:InfoText Classes="page-sub" Markup="Keeps a [steady|steady frame rate] and watches heat and memory." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding EnablePerformanceGuard}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row" IsEnabled="{Binding EnablePerformanceGuard}">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Cool down when hot" />
+                                    <TextBlock Classes="page-sub" Text="Drops to 30 FPS above 47°C." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoThrottleOnOverheat}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Heat warnings" />
+                                    <TextBlock Classes="page-sub" Text="Warns you from 45°C." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding HeatWarnings}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row" BorderThickness="0">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Heat and memory alerts" />
+                                    <TextBlock Classes="page-sub" Text="A short message when the phone slows itself down." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowHardwareAlerts}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-band"><TextBlock Text="LIGHTER GAME" /></Border>
+                        <Border Classes="page-row">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Hide other players" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding Options.HidePlayers}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Optimize other players" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding Options.OptimizePlayers}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Disable skill effects" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding Options.DisableFX}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row" BorderThickness="0">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Lag killer" />
+                                    <TextBlock Classes="page-sub" Text="Hides the whole world. Bots keep playing." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding Options.LagKiller}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-band"><TextBlock Text="FINE TUNING" /></Border>
+                        <Grid ColumnDefinitions="110,*" ColumnSpacing="8" Margin="0,0,0,6">
+                            <TextBlock Classes="page-text" VerticalAlignment="Center" Text="Resolution" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding ResolutionChoices}" SelectedItem="{Binding Resolution}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GraphicsViewModel+Choice">
+                                        <TextBlock Text="{Binding Label}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Grid>
+                        <Grid ColumnDefinitions="110,*" ColumnSpacing="8" Margin="0,0,0,6">
+                            <TextBlock Classes="page-text" VerticalAlignment="Center" Text="Anti-aliasing" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding AntiAliasChoices}" SelectedItem="{Binding AntiAlias}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GraphicsViewModel+Choice">
+                                        <TextBlock Text="{Binding Label}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Grid>
+                        <Grid ColumnDefinitions="110,*" ColumnSpacing="8" Margin="0,0,0,6">
+                            <TextBlock Classes="page-text" VerticalAlignment="Center" Text="Colours" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding ColourChoices}" SelectedItem="{Binding ColourStyle}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GraphicsViewModel+Choice">
+                                        <TextBlock Text="{Binding Label}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Grid>
+                        <Grid ColumnDefinitions="110,*" ColumnSpacing="8" Margin="0,0,0,6" IsEnabled="{Binding EnablePerformanceGuard}">
+                            <TextBlock Classes="page-text" VerticalAlignment="Center" Text="Target FPS" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding TargetFpsChoices}" SelectedItem="{Binding TargetFps}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GraphicsViewModel+Choice">
+                                        <TextBlock Text="{Binding Label}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Grid>
+                        <Border Classes="page-note"><v:InfoText Lead="Note: " Markup="*Resolution* and *Anti-aliasing* cost the most power." /></Border>
+                        <Border Classes="page-band"><TextBlock Text="RIGHT NOW" /></Border>
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
+                            <TextBlock Grid.Row="0" Classes="page-sub" Text="Frame rate" />
+                            <TextBlock Grid.Row="0" Grid.Column="1" Classes="page-sub" Foreground="#EAD9A8" Text="{Binding LivePacingStatus}" />
+                            <TextBlock Grid.Row="1" Classes="page-sub" Text="Heat" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="page-sub" Foreground="#EAD9A8" Text="{Binding LiveThermalStatus}" />
+                            <TextBlock Grid.Row="2" Classes="page-sub" Text="Memory" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Classes="page-sub" Foreground="#EAD9A8" Text="{Binding LiveMemoryStatus}" />
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </v:InfoHost>
+        </Border>
+    </ThemeVariantScope>
+</UserControl>

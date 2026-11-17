@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:vms="clr-namespace:Skua.App.Avalonia.ViewModels.CoreBotsOptions"
+             x:DataType="vms:CoreBotsViewModel"
+             Background="{DynamicResource SkuaPageBrush}"
+             x:Class="Skua.App.Avalonia.Views.CoreBotsView">
+  <Grid Margin="12" RowDefinitions="Auto,Auto,*" RowSpacing="10">
+    <DockPanel Grid.Row="0" LastChildFill="True">
+      <Border DockPanel.Dock="Left" Width="32" Height="32" CornerRadius="16"
+              Background="{DynamicResource SkuaSurfaceAltBrush}"
+              BorderBrush="{DynamicResource SkuaBorderBrush}"
+              BorderThickness="1">
+        <materialIcons:MaterialIcon Kind="AccountCircleOutline" Width="18" Height="18"
+                                    Foreground="{DynamicResource SkuaAccentBrush}" />
+      </Border>
+      <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center" Margin="10,0,8,0">
+        <TextBlock Text="Profile" FontSize="11" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+        <TextBlock Text="{Binding CurrentPlayer}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                   IsVisible="{Binding CurrentPlayer, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <TextBlock Text="Not logged in" FontWeight="SemiBold" Foreground="{DynamicResource SkuaMutedTextBrush}"
+                   IsVisible="{Binding CurrentPlayer, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+      </StackPanel>
+      <WrapPanel HorizontalAlignment="Right" VerticalAlignment="Center" ItemSpacing="8" LineSpacing="8">
+        <Button Classes="skua-button w84" Command="{Binding LoadCommand}" ToolTip.Tip="Load saved CoreBots settings">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="15" Height="15" />
+            <TextBlock Text="Load" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Classes="skua-button w140" Command="{Binding LoadCharacterCommand}"
+                ToolTip.Tip="Load in-game character equipment and classes">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <materialIcons:MaterialIcon Kind="AccountSyncOutline" Width="15" Height="15" />
+            <TextBlock Text="Load character" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Classes="skua-button skua-primary w84" Command="{Binding SaveCommand}" ToolTip.Tip="Save current CoreBots options">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="15" Height="15" />
+            <TextBlock Text="Save" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Classes="skua-button w84" Command="{Binding ImportCommand}"
+                ToolTip.Tip="Import a CBO_Storage(name).txt, for example copied from VibeSkua on a PC">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <materialIcons:MaterialIcon Kind="FileImportOutline" Width="15" Height="15" />
+            <TextBlock Text="Import" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </WrapPanel>
+    </DockPanel>
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+      <ListBox Grid.Column="0"
+               Classes="top-tabs-client"
+               ItemsSource="{Binding CoreBotsTabs}"
+               SelectedItem="{Binding SelectedTab}"
+               ScrollViewer.HorizontalScrollBarVisibility="Auto"
+               ScrollViewer.VerticalScrollBarVisibility="Disabled">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Header}" Classes="top-tabs-label" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <TextBox Grid.Column="1" Width="220" Watermark="Search options"
+               IsVisible="{Binding IsOptionsTabSelected}"
+               Text="{Binding OptionsTab.SearchText, Mode=TwoWay}">
+        <TextBox.InnerLeftContent>
+          <materialIcons:MaterialIcon Kind="Magnify" Width="15" Height="15" Margin="10,0,0,0" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+        </TextBox.InnerLeftContent>
+      </TextBox>
+    </Grid>
+    <ContentControl Grid.Row="2" Content="{Binding SelectedTab.Content}" />
+  </Grid>
+</UserControl>

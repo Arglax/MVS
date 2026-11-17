@@ -1,0 +1,153 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vms="clr-namespace:Skua.Shared.Avalonia.ViewModels.Options"
+             xmlns:controls="clr-namespace:Skua.Shared.Avalonia.Controls.Options"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="Skua.Shared.Avalonia.Controls.Options.OptionContainerUserControl"
+             x:DataType="vms:OptionContainerViewModel"
+             mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="520">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.title"><Setter Property="FontSize" Value="12" /><Setter Property="TextTrimming" Value="CharacterEllipsis" /></Style>
+    <Style Selector="TextBlock.desc"><Setter Property="FontSize" Value="11" /><Setter Property="TextTrimming" Value="CharacterEllipsis" /></Style>
+    <Style Selector="TextBlock.def"><Setter Property="IsVisible" Value="False" /></Style>
+    <Style Selector=":is(UserControl):not(.mvs) Border.bar"><Setter Property="Opacity" Value="0" /></Style>
+    <Style Selector=":is(UserControl).mvs Border#InfoCard"><Setter Property="IsVisible" Value="False" /></Style>
+    <Style Selector=":is(UserControl).mvs Border#ListFrame">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector=":is(UserControl).mvs Border.row">
+      <Setter Property="Padding" Value="14,12" />
+      <Setter Property="Margin" Value="0,4" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+    <Style Selector=":is(UserControl).mvs TextBlock.title"><Setter Property="FontSize" Value="15" /><Setter Property="TextTrimming" Value="None" /><Setter Property="TextWrapping" Value="Wrap" /></Style>
+    <Style Selector=":is(UserControl).mvs TextBlock.desc">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="TextTrimming" Value="None" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+    <Style Selector=":is(UserControl).mvs TextBlock.def">
+      <Setter Property="IsVisible" Value="True" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+    <Style Selector=":is(UserControl).mvs TextBlock.cat"><Setter Property="FontSize" Value="13" /><Setter Property="Foreground" Value="#E8C15A" /></Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+    <Border Grid.Row="0"
+            Margin="0,0,0,10"
+            Background="{DynamicResource SkuaSurfaceAltBrush}"
+            BorderBrush="{DynamicResource SkuaAccentBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="12,8"
+            IsVisible="{Binding ResetNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <Grid ColumnDefinitions="Auto,*">
+        <materialIcons:MaterialIcon Kind="AlertCircleOutline" Width="16" Height="16" VerticalAlignment="Top"
+                                    Margin="0,0,8,0"
+                                    Foreground="{DynamicResource SkuaAccentBrush}" />
+        <TextBlock Grid.Column="1"
+                   Text="{Binding ResetNotice}"
+                   FontSize="12"
+                   Foreground="{DynamicResource SkuaTextBrush}"
+                   TextWrapping="Wrap" />
+      </Grid>
+    </Border>
+    <Border Grid.Row="1" x:Name="ListFrame"
+            Background="{DynamicResource SkuaSurfaceBrush}"
+            BorderBrush="{DynamicResource SkuaBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="8">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto"
+                    AllowAutoHide="False">
+        <ItemsControl ItemsSource="{Binding GroupedOptions}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vms:OptionCategoryGroup">
+              <Expander IsExpanded="True"
+                        Margin="0,0,0,8"
+                        Background="{DynamicResource SkuaSurfaceAltBrush}"
+                        BorderBrush="{DynamicResource SkuaBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                <Expander.Header>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <materialIcons:MaterialIcon Kind="FolderCogOutline" Width="16" Height="16" Foreground="{DynamicResource SkuaAccentBrush}" />
+                    <TextBlock Text="{Binding Category}" Classes="cat"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource SkuaTextBrush}"
+                               VerticalAlignment="Center" />
+                  </StackPanel>
+                </Expander.Header>
+                <ItemsControl ItemsSource="{Binding Items}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vms:OptionContainerItemViewModel">
+                      <Border Classes="row"
+                              Margin="0,2"
+                              Padding="8,6"
+                              CornerRadius="6"
+                              Background="{DynamicResource SkuaSurfaceBrush}"
+                              BorderBrush="{DynamicResource SkuaBorderBrush}"
+                              BorderThickness="1"
+                              PointerPressed="OnOptionPointerPressed">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <Border Grid.Column="0" Classes="bar" Width="4" CornerRadius="2" Margin="-8,0,8,0"
+                                  Background="#E8C15A" IsVisible="{Binding IsChanged}" />
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Classes="title"
+                                       Text="{Binding Option.DisplayName, FallbackValue={Binding Option.Name}}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SkuaTextBrush}" />
+                            <TextBlock Classes="desc"
+                                       Text="{Binding Option.Description}"
+                                       Foreground="{DynamicResource SkuaMutedTextBrush}"
+                                       IsVisible="{Binding Option.Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Classes="def" Text="{Binding DefaultText}" Foreground="{DynamicResource SkuaMutedTextBrush}" Opacity="0.8" />
+                          </StackPanel>
+                          <controls:OptionValueEditorControl Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Expander>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Border>
+    <Border Grid.Row="2" x:Name="InfoCard"
+            Margin="0,10,0,0"
+            Background="{DynamicResource SkuaSurfaceAltBrush}"
+            BorderBrush="{DynamicResource SkuaBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="12,10">
+      <StackPanel Spacing="4">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0"
+                     Text="{Binding SelectedOption.Option.DisplayName, FallbackValue='Option Info'}"
+                     FontWeight="Bold"
+                     FontSize="13"
+                     Foreground="{DynamicResource SkuaTextBrush}" />
+          <TextBlock Grid.Column="1"
+                     Text="{Binding SelectedOption.Option.DefaultValue, StringFormat='Default: {0}'}"
+                     FontSize="11"
+                     Foreground="{DynamicResource SkuaMutedTextBrush}"
+                     IsVisible="{Binding SelectedOption.Option.DefaultValue, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </Grid>
+        <TextBlock Text="{Binding SelectedOption.Option.Description, FallbackValue='Select an option to view its description.'}"
+                   FontSize="12"
+                   Foreground="{DynamicResource SkuaMutedTextBrush}"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

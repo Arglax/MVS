@@ -1,0 +1,311 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Styles.Resources>
+        <LinearGradientBrush x:Key="AqwGoldBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#FFF4C0" />
+            <GradientStop Offset="0.45" Color="#F7C948" />
+            <GradientStop Offset="1" Color="#C8861A" />
+        </LinearGradientBrush>
+        <SolidColorBrush x:Key="AqwTrimBrush" Color="#8C6A2B" />
+        <SolidColorBrush x:Key="AqwLabelBrush" Color="#EAD9A8" />
+        <LinearGradientBrush x:Key="AqwRailBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#1E150D" />
+            <GradientStop Offset="1" Color="#0E0905" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="AqwActiveBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#7A1717" />
+            <GradientStop Offset="1" Color="#3F0A0A" />
+        </LinearGradientBrush>
+        <SolidColorBrush x:Key="AqwHoverBrush" Color="#2EF7C948" />
+        <LinearGradientBrush x:Key="AqwStartBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#4E9E36" />
+            <GradientStop Offset="1" Color="#1F5C17" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="AqwStopBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#C0352A" />
+            <GradientStop Offset="1" Color="#6E0F0F" />
+        </LinearGradientBrush>
+    </Styles.Resources>
+    <Style Selector="Border.mobile-topbar">
+        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Button.mobile-icon">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="Padding" Value="10" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.mobile-script">
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="12,4" />
+        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.mobile-railframe">
+        <Setter Property="Background" Value="{StaticResource AqwRailBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwTrimBrush}" />
+    </Style>
+    <Style Selector="Border.mobile-railframe.left">
+        <Setter Property="BorderThickness" Value="0,0,1,0" />
+    </Style>
+    <Style Selector="Border.mobile-railframe.right">
+        <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+    <Style Selector="Border.mobile-railframe.bottom">
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Button.mobile-rail">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource AqwGoldBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Width" Value="62" />
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="Padding" Value="2,3" />
+        <Setter Property="Margin" Value="1,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.mobile-rail.active">
+        <Setter Property="Background" Value="{StaticResource AqwActiveBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwTrimBrush}" />
+    </Style>
+    <Style Selector="Button.mobile-rail:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwTrimBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource AqwGoldBrush}" />
+    </Style>
+    <Style Selector="Button.mobile-rail:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwTrimBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource AqwGoldBrush}" />
+    </Style>
+    <Style Selector="Button.mobile-rail.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwActiveBrush}" />
+    </Style>
+    <Style Selector="Button.mobile-rail-script">
+        <Setter Property="Background" Value="{StaticResource AqwStartBrush}" />
+        <Setter Property="Foreground" Value="#FFF6DC" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwGoldBrush}" />
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="Margin" Value="1,2,1,0" />
+    </Style>
+    <Style Selector="Button.mobile-rail-script.running">
+        <Setter Property="Background" Value="{StaticResource AqwStopBrush}" />
+    </Style>
+    <Style Selector="Button.mobile-rail-script:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwStartBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwGoldBrush}" />
+        <Setter Property="Foreground" Value="#FFF6DC" />
+    </Style>
+    <Style Selector="Button.mobile-rail-script:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwStartBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwGoldBrush}" />
+        <Setter Property="Foreground" Value="#FFF6DC" />
+    </Style>
+    <Style Selector="Button.mobile-rail-script.running:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwStopBrush}" />
+    </Style>
+    <Style Selector="Button.mobile-rail-script.running:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwStopBrush}" />
+    </Style>
+    <Style Selector="TextBlock.mobile-rail-label">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="Foreground" Value="{StaticResource AqwLabelBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="MaxWidth" Value="60" />
+    </Style>
+    <Style Selector="Button.mobile-rail-script TextBlock.mobile-rail-label">
+        <Setter Property="Foreground" Value="#FFF6DC" />
+    </Style>
+    <Style Selector="Border.mobile-pageheader">
+        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="10,0,2,0" />
+        <Setter Property="MinHeight" Value="44" />
+    </Style>
+    <Style Selector="TextBlock.mobile-menu-header">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Margin" Value="16,8,16,2" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
+    </Style>
+    <Style Selector="Button.mobile-menu-item">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="MinHeight" Value="42" />
+        <Setter Property="Padding" Value="20,8" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Border.mobile-page">
+        <Setter Property="Background" Value="{DynamicResource SkuaPageBrush}" />
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.mobile-pagegrip">
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Background" Value="{StaticResource AqwRailBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwTrimBrush}" />
+        <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+    <Style Selector="Border.mobile-pagegrip-pill">
+        <Setter Property="Width" Value="5" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Background" Value="{StaticResource AqwGoldBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.guide-jump">
+        <Setter Property="Background" Value="#2A1D10" />
+        <Setter Property="Foreground" Value="#F7C948" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwTrimBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="MinHeight" Value="42" />
+        <Setter Property="Padding" Value="6,4" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.guide-jump:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#2A1D10" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwTrimBrush}" />
+        <Setter Property="Foreground" Value="#F7C948" />
+    </Style>
+    <Style Selector="Button.guide-jump:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwActiveBrush}" />
+        <Setter Property="BorderBrush" Value="#C9A447" />
+        <Setter Property="Foreground" Value="#FFF4C0" />
+    </Style>
+    <Style Selector="Button.guide-action">
+        <Setter Property="Background" Value="{StaticResource AqwActiveBrush}" />
+        <Setter Property="Foreground" Value="#FFF4C0" />
+        <Setter Property="BorderBrush" Value="#C9A447" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="MinHeight" Value="42" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.guide-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwActiveBrush}" />
+        <Setter Property="BorderBrush" Value="#C9A447" />
+        <Setter Property="Foreground" Value="#FFF4C0" />
+    </Style>
+    <Style Selector="Button.guide-action:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AqwActiveBrush}" />
+        <Setter Property="BorderBrush" Value="#FFF4C0" />
+        <Setter Property="Foreground" Value="#FFF4C0" />
+    </Style>
+    <Style Selector="Border.aqw-page">
+        <Setter Property="Background" Value="{StaticResource AqwRailBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource AqwLabelBrush}" />
+    </Style>
+    <Style Selector="Border.page-band">
+        <Setter Property="Margin" Value="0,16,0,8" />
+        <Setter Property="Padding" Value="12,7,12,6" />
+        <Setter Property="BorderBrush" Value="#C9A447" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
+        <Setter Property="Background">
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                <GradientStop Offset="0" Color="#007A1717" />
+                <GradientStop Offset="0.3" Color="#D97A1717" />
+                <GradientStop Offset="0.7" Color="#D97A1717" />
+                <GradientStop Offset="1" Color="#007A1717" />
+            </LinearGradientBrush>
+        </Setter>
+    </Style>
+    <Style Selector="Border.page-band > TextBlock">
+        <Setter Property="Foreground" Value="#F7C948" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="Black" />
+        <Setter Property="LetterSpacing" Value="0.6" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector=":is(TextBlock).page-text">
+        <Setter Property="Foreground" Value="{StaticResource AqwLabelBrush}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="LineHeight" Value="20" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector=":is(TextBlock).page-name">
+        <Setter Property="Foreground" Value="#FFD866" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector=":is(TextBlock).page-sub">
+        <Setter Property="Foreground" Value="#C8B89A" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="LineHeight" Value="17" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.page-row">
+        <Setter Property="BorderBrush" Value="#5A8C6A2B" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="0,6" />
+    </Style>
+    <Style Selector="Border.page-note">
+        <Setter Property="Margin" Value="0,4,0,6" />
+        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="BorderBrush" Value="#C9A447" />
+        <Setter Property="BorderThickness" Value="3,0,0,0" />
+        <Setter Property="CornerRadius" Value="0,6,6,0" />
+        <Setter Property="Background" Value="#1AC9A447" />
+    </Style>
+    <Style Selector="Border.page-note > :is(TextBlock)">
+        <Setter Property="Foreground" Value="#D9C690" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="LineHeight" Value="18" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.page-card">
+        <Setter Property="Background" Value="#2A1D10" />
+        <Setter Property="BorderBrush" Value="{StaticResource AqwTrimBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+    <Style Selector="Border.mobile-dialog">
+        <Setter Property="Background" Value="{DynamicResource SkuaPageBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Margin" Value="12" />
+        <Setter Property="MaxWidth" Value="640" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button">
+        <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector="TextBox">
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+    <Style Selector="CheckBox">
+        <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector="ScrollBar">
+        <Setter Property="AllowAutoHide" Value="True" />
+    </Style>
+</Styles>

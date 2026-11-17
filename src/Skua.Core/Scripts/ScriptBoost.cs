@@ -1,0 +1,187 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using Skua.Core.Interfaces;
+using Skua.Core.Models.Items;
+namespace Skua.Core.Scripts;
+public partial class ScriptBoost : ObservableObject, IScriptBoost, IAsyncDisposable
+{
+public ScriptBoost(
+Lazy<IFlashUtil> flash,
+Lazy<IScriptSend> send,
+Lazy<IScriptMap> map,
+Lazy<IScriptInventory> inventory,
+Lazy<IScriptBank> bank,
+Lazy<IScriptPlayer> player,
+Lazy<IScriptWait> wait)
+{
+_lazyInventory = inventory;
+_lazyBank = bank;
+_lazyPlayer = player;
+_lazySend = send;
+_lazyWait = wait;
+_lazyMap = map;
+_lazyFlash = flash;
+_timerBoosts = new PeriodicTimer(TimeSpan.FromSeconds(30));
+}
+private readonly Lazy<IScriptInventory> _lazyInventory;
+private readonly Lazy<IScriptBank> _lazyBank;
+private readonly Lazy<IScriptPlayer> _lazyPlayer;
+private readonly Lazy<IScriptSend> _lazySend;
+private readonly Lazy<IScriptWait> _lazyWait;
+private readonly Lazy<IScriptMap> _lazyMap;
+private readonly Lazy<IFlashUtil> _lazyFlash;
+private IScriptInventory Inventory => _lazyInventory.Value;
+private IScriptBank Bank => _lazyBank.Value;
+private IScriptSend Send => _lazySend.Value;
+private IScriptWait Wait => _lazyWait.Value;
+private IScriptMap Map => _lazyMap.Value;
+private IFlashUtil Flash => _lazyFlash.Value;
+private readonly PeriodicTimer _timerBoosts;
+private Task? _taskBoosts;
+private CancellationTokenSource? _ctsBoosts;
+public bool Enabled => _taskBoosts is not null;
+[ObservableProperty]
+private bool _useClassBoost = false;
+[ObservableProperty]
+private int _classBoostID;
+[ObservableProperty]
+private bool _useExperienceBoost = false;
+[ObservableProperty]
+private int _experienceBoostID;
+[ObservableProperty]
+private bool _useGoldBoost = false;
+[ObservableProperty]
+private int _goldBoostID;
+[ObservableProperty]
+private bool _useReputationBoost = false;
+[ObservableProperty]
+private int _reputationBoostID;
+public bool IsBoostActive(BoostType boost)
+{
+return Flash.GetGameObject($"world.myAvatar.objData.{_boostMap[boost]}", 0) > 0;
+}
+public void UseBoost(int id)
+{
+Send.Packet($"%xt%zm%serverUseItem%{Map.RoomID}%+%{id}%");
+}
+public int GetBoostID(BoostType boostType, bool searchBank = true)
+{
+return SearchBoost(boostType, searchBank);
+}
+private static readonly Dictionary<BoostType, string[]> BoostSearchTerms = new()
+{
+{ BoostType.Gold, ["gold"] },
+{ BoostType.Class, ["class"] },
+{ BoostType.Reputation, ["rep", "reputation"] },
+{ BoostType.Experience, ["xp", "exp", "experience"] }
+};
+private int SearchBoost(BoostType boostType, bool searchBank = false)
+{
+if (!_lazyPlayer.Value.LoggedIn || !BoostSearchTerms.TryGetValue(boostType, out string[]? searchTerms))
+return 0;
+List<InventoryItem>? items = Inventory.Items;
+if (items is not null)
+{
+foreach (InventoryItem item in items)
+{
+if (IsMatchingBoost(item, searchTerms))
+return item.ID;
+}
+}
+if (!searchBank)
+return 0;
+if (!Bank.Loaded)
+Bank.Load();
+List<InventoryItem>? bankItems = Bank.Items;
+if (bankItems is null)
+return 0;
+foreach (InventoryItem item in bankItems)
+{
+if (!IsMatchingBoost(item, searchTerms))
+continue;
+return Bank.EnsureToInventory(item.ID, false) ? item.ID : 0;
+}
+return 0;
+}
+private static bool IsMatchingBoost(InventoryItem item, string[] searchTerms)
+{
+if (string.IsNullOrWhiteSpace(item.Name) || !item.Name.Contains("boost", StringComparison.OrdinalIgnoreCase))
+return false;
+foreach (string term in searchTerms)
+{
+if (item.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+return true;
+}
+return false;
+}
+public void Start()
+{
+if (_taskBoosts is not null)
+return;
+_ctsBoosts = new();
+_taskBoosts = HandleBoosts(_timerBoosts, _ctsBoosts.Token);
+OnPropertyChanged(nameof(Enabled));
+}
+public void Stop()
+{
+if (_taskBoosts is null)
+return;
+_ctsBoosts?.Cancel();
+Wait.ForTrue(() => _taskBoosts?.IsCompleted == true, null, 20);
+_ctsBoosts?.Dispose();
+_taskBoosts = null;
+OnPropertyChanged(nameof(Enabled));
+}
+public async ValueTask StopAsync()
+{
+if (_taskBoosts is null)
+return;
+_ctsBoosts?.Cancel();
+await Wait.ForTrueAsync(() => _taskBoosts?.IsCompleted == true, 20);
+_ctsBoosts?.Dispose();
+_ctsBoosts = null;
+_taskBoosts = null;
+OnPropertyChanged(nameof(Enabled));
+}
+private async Task HandleBoosts(PeriodicTimer timer, CancellationToken token)
+{
+try
+{
+await PollBoosts(token);
+while (await timer.WaitForNextTickAsync(token))
+await PollBoosts(token);
+}
+catch { }
+}
+private async Task PollBoosts(CancellationToken token)
+{
+await _UseBoost(UseGoldBoost, GoldBoostID, BoostType.Gold, token);
+await _UseBoost(UseClassBoost, ClassBoostID, BoostType.Class, token);
+await _UseBoost(UseExperienceBoost, ExperienceBoostID, BoostType.Experience, token);
+await _UseBoost(UseReputationBoost, ReputationBoostID, BoostType.Reputation, token);
+}
+private async ValueTask _UseBoost(bool useBoost, int id, BoostType boostType, CancellationToken token)
+{
+if (!useBoost || id == 0 || IsBoostActive(boostType))
+return;
+UseBoost(id);
+await Task.Delay(1000, token);
+}
+public async ValueTask DisposeAsync()
+{
+if (_taskBoosts is not null)
+{
+_ctsBoosts?.Cancel();
+await _taskBoosts;
+_ctsBoosts?.Dispose();
+}
+_timerBoosts.Dispose();
+GC.SuppressFinalize(this);
+}
+private readonly Dictionary<BoostType, string> _boostMap = new()
+{
+{ BoostType.Gold, "iBoostG" },
+{ BoostType.Class, "iBoostCP" },
+{ BoostType.Reputation, "iBoostRep" },
+{ BoostType.Experience, "iBoostXP" }
+};
+}

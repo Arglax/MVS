@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:vm="clr-namespace:MoVibeSkua.Android.ViewModels"
+             xmlns:platform="clr-namespace:MoVibeSkua.Android.Platform"
+             x:Class="MoVibeSkua.Android.Views.LoginView"
+             x:DataType="vm:LoginViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="10" MaxWidth="480">
+            <TextBlock Text="Saved on this phone only, encrypted with its keystore. MVS keeps you logged in and relogs after disconnects."
+                       TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+            <ItemsControl ItemsSource="{Binding Accounts}" IsVisible="{Binding HasAccounts}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="platform:SavedAccount">
+                        <Border Margin="0,4" Padding="10,8" CornerRadius="12"
+                                Background="{DynamicResource SkuaSurfaceAltBrush}"
+                                BorderBrush="{DynamicResource SkuaBorderBrush}" BorderThickness="1">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="20" Background="#5A2A1C"
+                                        BorderBrush="#B88A3A" BorderThickness="1" VerticalAlignment="Center">
+                                    <materialIcons:MaterialIcon Kind="Account" Width="24" Height="24" Foreground="#E8C15A" />
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="16" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Server}" FontSize="12" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+                                </StackPanel>
+                                <Button Grid.Column="2" Classes="skua-button skua-primary" Content="Log in" VerticalAlignment="Center"
+                                        Command="{Binding $parent[UserControl].((vm:LoginViewModel)DataContext).QuickLoginCommand}"
+                                        CommandParameter="{Binding}" />
+                                <Button Grid.Column="3" Classes="skua-button" ToolTip.Tip="Edit" VerticalAlignment="Center"
+                                        Command="{Binding $parent[UserControl].((vm:LoginViewModel)DataContext).EditAccountCommand}"
+                                        CommandParameter="{Binding}">
+                                    <materialIcons:MaterialIcon Kind="PencilOutline" Width="18" Height="18" />
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Classes="skua-button" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="10,12"
+                    Command="{Binding AddAccountCommand}" IsVisible="{Binding !ShowForm}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <materialIcons:MaterialIcon Kind="AccountPlus" Width="20" Height="20" />
+                    <TextBlock Text="Add account" VerticalAlignment="Center" FontWeight="SemiBold" />
+                </StackPanel>
+            </Button>
+            <Border Padding="12" CornerRadius="12" IsVisible="{Binding ShowForm}"
+                    Background="{DynamicResource SkuaSurfaceAltBrush}"
+                    BorderBrush="{DynamicResource SkuaBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="9">
+                    <TextBlock Text="{Binding FormTitle}" FontWeight="SemiBold" FontSize="16" />
+                    <TextBox Text="{Binding Username}" Watermark="Username"
+                             TextInputOptions.AutoCapitalization="False" TextInputOptions.ShowSuggestions="False" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBox Grid.Column="0" Text="{Binding Password}" Watermark="Password" PasswordChar="•"
+                                 RevealPassword="{Binding #ShowPassword.IsChecked}"
+                                 TextInputOptions.ContentType="Password" TextInputOptions.IsSensitive="True"
+                                 TextInputOptions.AutoCapitalization="False" TextInputOptions.ShowSuggestions="False" />
+                        <ToggleButton x:Name="ShowPassword" Grid.Column="1" Classes="skua-button" ToolTip.Tip="Show password">
+                            <Panel>
+                                <materialIcons:MaterialIcon Kind="EyeOutline" Width="18" Height="18" IsVisible="{Binding !#ShowPassword.IsChecked}" />
+                                <materialIcons:MaterialIcon Kind="EyeOffOutline" Width="18" Height="18" IsVisible="{Binding #ShowPassword.IsChecked}" />
+                            </Panel>
+                        </ToggleButton>
+                    </Grid>
+                    <ComboBox ItemsSource="{Binding Servers}" SelectedItem="{Binding Server}" HorizontalAlignment="Stretch"
+                              PlaceholderText="Server" />
+                    <Grid ColumnDefinitions="*,8,*,8,Auto">
+                        <Button Grid.Column="0" Classes="skua-button skua-primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Content="Save &amp; log in" Command="{Binding SaveAndLoginCommand}" IsEnabled="{Binding !IsBusy}" />
+                        <Button Grid.Column="2" Classes="skua-button" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Content="Save" Command="{Binding SaveAccountCommand}" />
+                        <Button Grid.Column="4" Classes="skua-button" Content="Cancel" Command="{Binding CloseFormCommand}"
+                                IsVisible="{Binding HasAccounts}" />
+                    </Grid>
+                    <Button Classes="skua-button" HorizontalAlignment="Left" Foreground="#FF8A80"
+                            IsVisible="{Binding EditingName, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Command="{Binding RemoveAccountCommand}"
+                            CommandParameter="{Binding $parent[UserControl].((vm:LoginViewModel)DataContext).EditingAccount}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="16" Height="16" />
+                            <TextBlock Text="Remove from this phone" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+            <Grid ColumnDefinitions="*,8,*">
+                <Button Grid.Column="0" Classes="skua-button" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Content="Cancel login" Command="{Binding CancelLoginCommand}" IsVisible="{Binding IsBusy}" />
+                <Button Grid.Column="2" Classes="skua-button" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Content="Log out" Command="{Binding LogoutCommand}" />
+            </Grid>
+            <ProgressBar IsIndeterminate="{Binding IsBusy}" Height="4" IsVisible="{Binding IsBusy}" />
+            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

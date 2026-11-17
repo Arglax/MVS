@@ -1,0 +1,145 @@
+using System;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Skua.Core.Interfaces;
+using Skua.Core.Utils;
+using Skua.Shared.Avalonia.ViewModels;
+namespace Skua.App.Avalonia.ViewModels;
+public partial class JumpViewModel : BotControlViewModelBase
+{
+public JumpViewModel(IMapService mapService, ISettingsService settingsService)
+: base("Jump")
+{
+_mapService = mapService;
+_settingsService = settingsService;
+_autoJumpOnPositionChange = _settingsService.Get("AutoJumpOnPositionChange", false);
+Pads = _mapService.Pads;
+}
+private readonly IMapService _mapService;
+private readonly ISettingsService _settingsService;
+private readonly SemaphoreSlim _jumpSemaphore = new(1, 1);
+private long _jumpRequestVersion;
+private bool _suppressAutoJump = false;
+[ObservableProperty]
+private string _selectedCell = string.Empty;
+async partial void OnSelectedCellChanged(string value)
+{
+Interlocked.Increment(ref _jumpRequestVersion);
+if (string.IsNullOrWhiteSpace(value) || _suppressAutoJump)
+return;
+_suppressAutoJump = true;
+try
+{
+if (value == "Enter")
+SelectedPad = "Spawn";
+else if (string.IsNullOrWhiteSpace(SelectedPad))
+SelectedPad = "Left";
+}
+finally
+{
+_suppressAutoJump = false;
+}
+if (AutoJumpOnPositionChange)
+await JumpTo();
+}
+[ObservableProperty]
+private string _selectedPad = string.Empty;
+async partial void OnSelectedPadChanged(string value)
+{
+Interlocked.Increment(ref _jumpRequestVersion);
+if (!string.IsNullOrWhiteSpace(value) &&
+!string.IsNullOrWhiteSpace(SelectedCell) &&
+!_suppressAutoJump &&
+AutoJumpOnPositionChange)
+{
+await JumpTo();
+}
+}
+[ObservableProperty]
+private bool _autoJumpOnPositionChange;
+partial void OnAutoJumpOnPositionChangeChanged(bool value)
+{
+try
+{
+_settingsService.Set("AutoJumpOnPositionChange", value);
+}
+catch (Exception ex)
+{
+_autoJumpOnPositionChange = !value;
+OnPropertyChanged(nameof(AutoJumpOnPositionChange));
+Trace.WriteLine($"Failed to save AutoJumpOnPositionChange; toggle reverted: {ex}");
+}
+}
+[ObservableProperty]
+private RangedObservableCollection<string> _cells = new();
+public ImmutableList<string> Pads { get; }
+[RelayCommand]
+private void GetCurrent()
+{
+UpdateCells();
+(string? cell, string? pad) = _mapService.GetCurrentCell();
+_suppressAutoJump = true;
+try
+{
+SelectedCell = string.Empty;
+SelectedPad = string.Empty;
+SelectedCell = cell ?? string.Empty;
+SelectedPad = pad ?? string.Empty;
+}
+finally
+{
+_suppressAutoJump = false;
+}
+}
+[RelayCommand]
+private async Task JumpTo()
+{
+string cell = SelectedCell;
+string pad = SelectedPad;
+if (string.IsNullOrWhiteSpace(cell) || string.IsNullOrWhiteSpace(pad))
+return;
+long requestVersion = Interlocked.Increment(ref _jumpRequestVersion);
+try
+{
+await _jumpSemaphore.WaitAsync();
+try
+{
+if (requestVersion != Volatile.Read(ref _jumpRequestVersion))
+return;
+await Task.Run(() => _mapService.Jump(cell, pad));
+}
+finally
+{
+_jumpSemaphore.Release();
+}
+}
+catch (Exception ex)
+{
+Trace.WriteLine($"Jump menu jump failed: {ex}");
+}
+}
+[RelayCommand]
+public void UpdateCells()
+{
+string[] newCells = _mapService.Cells.ToArray();
+if (Cells.SequenceEqual(newCells))
+return;
+_suppressAutoJump = true;
+try
+{
+string current = SelectedCell;
+Cells.ReplaceRange(newCells);
+if (!string.IsNullOrEmpty(current) && Cells.Contains(current))
+SelectedCell = current;
+}
+finally
+{
+_suppressAutoJump = false;
+}
+}
+}

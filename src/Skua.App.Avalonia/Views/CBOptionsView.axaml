@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vms="clr-namespace:Skua.App.Avalonia.ViewModels.CoreBotsOptions"
+             xmlns:sharedOptions="clr-namespace:Skua.Shared.Avalonia.Controls.Options;assembly=Skua.Shared.Avalonia"
+             x:Class="Skua.App.Avalonia.Views.CBOptionsView"
+             x:DataType="vms:CBOptionsViewModel">
+  <Border Classes="option-list" VerticalAlignment="Top">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+      <ItemsControl ItemsSource="{Binding FilteredOptions}" Margin="0,0,0,-1" VerticalAlignment="Top">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="2" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.Styles>
+          <Style Selector="ContentPresenter:nth-child(2n+1) > Border.option-row">
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+          </Style>
+        </ItemsControl.Styles>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Classes="option-row" MinHeight="38" Padding="12,3">
+              <sharedOptions:OptionItemControl CompactText="True" />
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Border>
+</UserControl>

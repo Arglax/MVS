@@ -1,0 +1,114 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>MoVibeSkua.Android</RootNamespace>
+    <AssemblyName>MoVibeSkua</AssemblyName>
+    <ApplicationId>com.arglax.movibeskua</ApplicationId>
+    <ApplicationTitle>MoVibeSkua</ApplicationTitle>
+    <ApplicationVersion>7</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
+    <RuntimeIdentifiers Condition="'$(Configuration)' == 'Release'">android-arm64</RuntimeIdentifiers>
+    <RuntimeIdentifiers Condition="'$(Configuration)' != 'Release'">android-arm64;android-x64</RuntimeIdentifiers>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <AndroidLinkMode>None</AndroidLinkMode>
+    <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
+    <PublishTrimmed>false</PublishTrimmed>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <AndroidUseAssemblyStore>true</AndroidUseAssemblyStore>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="Skua.ClientId" Value="MoVibeSkuaAndroid" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Android" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Android" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Material.Avalonia" />
+    <PackageReference Include="Material.Icons" />
+    <PackageReference Include="Material.Icons.Avalonia" />
+    <PackageReference Include="Xamarin.AndroidX.Webkit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Skua.Core\Skua.Core.csproj" />
+    <ProjectReference Include="..\Skua.Core.Interfaces\Skua.Core.Interfaces.csproj" />
+    <ProjectReference Include="..\Skua.Core.Models\Skua.Core.Models.csproj" />
+    <ProjectReference Include="..\Skua.Core.Utils\Skua.Core.Utils.csproj" />
+    <ProjectReference Include="..\Skua.Shared.Avalonia\Skua.Shared.Avalonia.csproj" />
+    <ProjectReference Include="..\Skua.Flash.Ruffle\Skua.Flash.Ruffle.csproj" />
+    <ProjectReference Include="..\Skua.Compat.WinForms\Skua.Compat.WinForms.csproj" />
+    <ProjectReference Include="..\Skua.Core.Generators\Skua.Core.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <PropertyGroup>
+    <DesktopAppDir>..\Skua.App.Avalonia\</DesktopAppDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(DesktopAppDir)**\*.cs"
+             Exclude="$(DesktopAppDir)obj\**;$(DesktopAppDir)bin\**;$(DesktopAppDir)Program.cs;$(DesktopAppDir)App.axaml.cs;$(DesktopAppDir)Flash\**;$(DesktopAppDir)Controls\WinFormsFlashHost.cs;$(DesktopAppDir)Views\MainWindow.axaml.cs;$(DesktopAppDir)Views\TabbedHostWindow.axaml.cs;$(DesktopAppDir)Services\DialogService.cs;$(DesktopAppDir)Services\WindowService.cs;$(DesktopAppDir)Services\FileDialogService.cs;$(DesktopAppDir)Services\ScreenshotService.cs;$(DesktopAppDir)Services\SoundService.cs"
+             Link="Desktop\%(RecursiveDir)%(Filename)%(Extension)" />
+    <AvaloniaXaml Include="$(DesktopAppDir)**\*.axaml"
+                  Exclude="$(DesktopAppDir)obj\**;$(DesktopAppDir)bin\**;$(DesktopAppDir)App.axaml;$(DesktopAppDir)Views\MainWindow.axaml;$(DesktopAppDir)Views\TabbedHostWindow.axaml"
+                  Link="Desktop\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidJavaSource Include="Java\**\*.java" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="$(DesktopAppDir)QuestData.json" Link="Assets\seed\QuestData.json" />
+    <AndroidAsset Include="$(DesktopAppDir)AdvancedSkills.json" Link="Assets\seed\AdvancedSkills.json" />
+    <EmbeddedResource Include="Bot\MvsAutoEnhance.template.txt" LogicalName="MvsAutoEnhance.template.txt" />
+    <EmbeddedResource Include="Bot\mvs-enhance-ultra.json" LogicalName="mvs-enhance-ultra.json" />
+    <EmbeddedResource Include="$(DesktopAppDir)Assets\class-ratings.json" LogicalName="class-ratings.json" Condition="Exists('$(DesktopAppDir)Assets\class-ratings.json')" />
+    <AndroidAsset Include="firebase.json" Link="Assets\firebase.json" Condition="Exists('firebase.json')" />
+  </ItemGroup>
+  <PropertyGroup>
+    <PluginOutput>bin\$(Configuration)\net10.0\</PluginOutput>
+  </PropertyGroup>
+  <Target Name="PackBundledPlugins" AfterTargets="ResolveAssemblyReferences">
+    <MSBuild Projects="..\Skua.Plugin.DailyTracker\Skua.Plugin.DailyTracker.csproj"
+             Condition="!Exists('..\Skua.Plugin.DailyTracker\$(PluginOutput)Skua.Plugin.DailyTracker.dll')"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);TargetFramework=net10.0"
+             RemoveProperties="RuntimeIdentifier;RuntimeIdentifiers;SelfContained;PublishSelfContained" />
+    <MSBuild Projects="..\Skua.Plugin.ButlerV5\Skua.Plugin.ButlerV5.csproj"
+             Condition="!Exists('..\Skua.Plugin.ButlerV5\$(PluginOutput)ButlerV5.dll')"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);TargetFramework=net10.0"
+             RemoveProperties="RuntimeIdentifier;RuntimeIdentifiers;SelfContained;PublishSelfContained" />
+    <MSBuild Projects="..\Skua.Plugin.Cosmetics\Skua.Plugin.Cosmetics.csproj"
+             Condition="!Exists('..\Skua.Plugin.Cosmetics\$(PluginOutput)Skua.Plugin.Cosmetics.dll')"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);TargetFramework=net10.0"
+             RemoveProperties="RuntimeIdentifier;RuntimeIdentifiers;SelfContained;PublishSelfContained" />
+    <ItemGroup>
+      <_BundledPlugin Include="..\Skua.Plugin.DailyTracker\$(PluginOutput)Skua.Plugin.DailyTracker.dll" />
+      <_BundledPlugin Include="..\Skua.Plugin.ButlerV5\$(PluginOutput)ButlerV5.dll" />
+      <_BundledPlugin Include="..\Skua.Plugin.Cosmetics\$(PluginOutput)Skua.Plugin.Cosmetics.dll" />
+      <AndroidAsset Include="@(_BundledPlugin)" Condition="Exists('%(FullPath)')" Link="Assets\plugins\%(Filename)%(Extension)" />
+    </ItemGroup>
+    <Error Condition="!Exists('%(_BundledPlugin.FullPath)')" Text="Bundled plugin DLL missing for APK packaging: %(_BundledPlugin.Identity)" />
+  </Target>
+  <ItemGroup>
+    <AvaloniaResource Include="Images\**" />
+  </ItemGroup>
+  <Target Name="PackScriptReferences" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <_ScriptRef Include="@(ReferencePath)" Condition="'%(Extension)' == '.dll' And '%(Filename)' != 'Mono.Android' And '%(Filename)' != 'Java.Interop' And !$([System.String]::Copy('%(Filename)').StartsWith('Xamarin.')) And !$([System.String]::Copy('%(Filename)').StartsWith('Avalonia.Android'))" />
+      <_ScriptRefSlim Include="%(_ScriptRef.ReferenceAssembly)" Condition="'%(_ScriptRef.ReferenceAssembly)' != '' And Exists('%(_ScriptRef.ReferenceAssembly)')" />
+      <_ScriptRefFull Include="@(_ScriptRef)" Condition="'%(_ScriptRef.ReferenceAssembly)' == '' Or !Exists('%(_ScriptRef.ReferenceAssembly)')" />
+      <AndroidAsset Include="@(_ScriptRefSlim);@(_ScriptRefFull)" Link="Assets\refs\%(Filename)%(Extension)" LogicalName="refs/%(Filename)%(Extension)" />
+    </ItemGroup>
+  </Target>
+</Project>

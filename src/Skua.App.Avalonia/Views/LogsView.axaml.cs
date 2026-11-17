@@ -1,0 +1,22 @@
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Skua.App.Avalonia.UserControls;
+namespace Skua.App.Avalonia.Views;
+public partial class LogsView : UserControl
+{
+public LogsView()
+{
+InitializeComponent();
+SizeChanged += (_, e) => LogsBar.Classes.Set("compact", e.NewSize.Width < 520);
+}
+private async void CopyButton_Click(object? sender, RoutedEventArgs e)
+{
+if (TabContent.Presenter?.Child is LogTabUserControl tab)
+await tab.CopySelectedOrAllAsync();
+}
+private void DeselectButton_Click(object? sender, RoutedEventArgs e)
+{
+if (TabContent.Presenter?.Child is LogTabUserControl tab)
+tab.DeselectAll();
+}
+}
