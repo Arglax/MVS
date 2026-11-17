@@ -35,6 +35,8 @@ Directory.Delete(scriptCache, true);
 }
 Skua.Core.AppStartup.Services.ScriptReferenceDirectories.Add(ReferenceDirectory);
 Skua.Core.Compiler.ScriptPrelude = ScriptShims.Source;
+Skua.Core.Compiler.RedirectExplorerCalls = true;
+Skua.Core.Utils.Link.Opener = OpenWebLink;
 CopyAssetFolder(context, "seed", ClientFileSources.SkuaDIR, overwrite: false);
 CopyAssetFolder(context, "plugins", ClientFileSources.SkuaPluginsDIR, overwrite: Army.IsFirst);
 }
@@ -42,6 +44,13 @@ catch (Exception ex)
 {
 Trace.WriteLine($"[Bootstrap] {ex}");
 }
+}
+private static void OpenWebLink(string link)
+{
+if (Uri.TryCreate(link, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp))
+new MoVibeSkua.Android.Services.AndroidProcessService().OpenLink(uri.AbsoluteUri);
+else
+Trace.WriteLine($"[Links] not opened on the phone: {link}");
 }
 private static void CopyAssetFolder(Context context, string assetFolder, string target, bool overwrite)
 {

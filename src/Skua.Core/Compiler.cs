@@ -31,9 +31,10 @@ private int _lastNamespaceHash = 0;
 private static readonly ConcurrentDictionary<int, string> _compiledRegistry = new();
 private static readonly ConcurrentDictionary<string, Assembly> _loadedAssemblies = new(StringComparer.OrdinalIgnoreCase);
 public static string ScriptPrelude { get; set; } = string.Empty;
+public static bool RedirectExplorerCalls { get; set; }
 private static IEnumerable<SyntaxTree> WithPrelude(SyntaxTree tree)
 {
-yield return tree;
+yield return RedirectExplorerCalls ? ExplorerCallRewriter.Rewrite(tree, _parseOptions) : tree;
 if (ScriptPrelude.Length > 0)
 yield return CSharpSyntaxTree.ParseText(ScriptPrelude, _parseOptions);
 }

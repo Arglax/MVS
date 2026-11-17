@@ -25,5 +25,14 @@ public const string Source = """
             public static bool IsWasi() => false;
             public static bool IsFreeBSD() => false;
         }
+        // Target of Process.Start("explorer", x) calls, which the compiler rewrites: opens web links in the phone's browser.
+        internal static class ScriptShell
+        {
+            public static global::System.Diagnostics.Process Open(string target)
+            {
+                global::Skua.Core.Utils.Link.OpenBrowser((target ?? string.Empty).Trim().Trim('"'));
+                return null;
+            }
+        }
         """;
 }
