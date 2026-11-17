@@ -16,6 +16,7 @@ public static class CrashPrompt
 public const string AskCrashed = "MVS has crashed. Send error report and crash log to the developer?";
 public const string AskProblem = "MVS ran into a problem. Send error report and crash log to the developer?";
 private static int _showing;
+public static bool IsShowing => Volatile.Read(ref _showing) == 1;
 public static void WhenReady()
 {
 _ = Task.Run(async () =>

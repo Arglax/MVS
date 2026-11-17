@@ -10,7 +10,7 @@
     <AssemblyName>MoVibeSkua</AssemblyName>
     <ApplicationId>com.arglax.movibeskua</ApplicationId>
     <ApplicationTitle>MoVibeSkua</ApplicationTitle>
-    <ApplicationVersion>9</ApplicationVersion>
+    <ApplicationVersion>10</ApplicationVersion>
     <ApplicationDisplayVersion>1.0.1</ApplicationDisplayVersion>
     <RuntimeIdentifiers Condition="'$(Configuration)' == 'Release'">android-arm64</RuntimeIdentifiers>
     <RuntimeIdentifiers Condition="'$(Configuration)' != 'Release'">android-arm64;android-x64</RuntimeIdentifiers>

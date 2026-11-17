@@ -90,6 +90,8 @@ await Task.Delay(TimeSpan.FromSeconds(5));
 if (Platform.Army.IsFirst)
 CollectExitRecords();
 CrashPrompt.WhenReady();
+if (Platform.Army.IsFirst)
+AppUpdates.CheckWhenReady();
 await Task.Delay(TimeSpan.FromSeconds(15));
 await UploadDecidedAsync();
 });

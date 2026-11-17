@@ -1,0 +1,7 @@
+# MVS version file, read by the app to offer updates and show notices.
+version: 1.0.1
+release_url: https://github.com/Arglax/MVS/releases/latest
+apk_url: https://github.com/Arglax/MVS/releases/latest/download/MVS_v1-0-1.apk
+notice_id: 2026-11-18-links
+notice_title: Scripts fixed
+notice_text: Scripts that opened Discord, ReadMe or report links used to stop with an error. That is fixed in this version, and MVS now tells you here when a new update is out.
