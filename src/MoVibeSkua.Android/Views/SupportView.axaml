@@ -42,8 +42,8 @@
                         <Border Classes="page-row">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Classes="page-name" Text="Ask me about crash reports" />
-                                    <v:InfoText Classes="page-sub" Markup="MVS asks before sending a [report|crash report]. Off: it sends nothing." />
+                                    <TextBlock Classes="page-name" Text="Send crash reports" />
+                                    <v:InfoText Classes="page-sub" Markup="MVS tells you what happened, then sends a [report|crash report] when you press OK. Off: it sends bare minimum info." />
                                 </StackPanel>
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding SendReports}" OnContent="" OffContent="" VerticalAlignment="Center" />
                             </Grid>

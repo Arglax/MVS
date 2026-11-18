@@ -50,6 +50,12 @@ verdict = new(ScriptVerdicts.Who.Mvs, "Something went wrong inside MVS while run
 }
 string script = ScriptName();
 Trace.WriteLine($"[Script] {script} {(starting ? "did not start" : "stopped")}: {verdict.Who} ({verdict.Reason}) {verdict.Short}");
+if (verdict.Who == ScriptVerdicts.Who.Setup)
+{
+RunNotifier.ShowWhenOnScreen(() => Ioc.Default.GetService<IDialogService>()?.ShowMessageBox(
+$"“{script}” could not start.\n\n{verdict.Short}", "Script could not start"));
+return;
+}
 string? reportId = ProblemReports.Save("problem", verdict.Who == ScriptVerdicts.Who.Mvs ? "mvs" : "script", ScriptVerdicts.Unwrap(error),
 $"Script {(starting ? "could not start" : "stopped")}: {verdict.Short}", script, fatal: false, feature: "script");
 string details = Details(error, script, verdict);
@@ -86,7 +92,8 @@ else
 {
 body = $"“{script}” {what} because of a problem in MVS, not in the script.\n\n" +
 $"{verdict.Reason}\n{verdict.Short}\n\n" +
-"Trying again often works; if it keeps happening, the MVS Discord can help. “Copy details” copies what happened.";
+"Trying again often works. If MVS asks to send a report, Yes shows Arglax exactly where it broke so it can be " +
+"fixed in an update; the MVS Discord can help too. “Copy details” copies what happened.";
 buttons = new[] { "Copy details", "MVS Discord", "OK" };
 }
 DialogResult result = dialogs.ShowMessageBox(body, starting ? "Script could not start" : "Script stopped", buttons);

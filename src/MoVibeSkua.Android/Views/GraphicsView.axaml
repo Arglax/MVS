@@ -160,13 +160,15 @@
                         </Grid>
                         <Border Classes="page-note"><v:InfoText Lead="Note: " Markup="*Resolution* and *Anti-aliasing* cost the most power." /></Border>
                         <Border Classes="page-band"><TextBlock Text="RIGHT NOW" /></Border>
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
                             <TextBlock Grid.Row="0" Classes="page-sub" Text="Frame rate" />
                             <TextBlock Grid.Row="0" Grid.Column="1" Classes="page-sub" Foreground="#EAD9A8" Text="{Binding LivePacingStatus}" />
                             <TextBlock Grid.Row="1" Classes="page-sub" Text="Heat" />
                             <TextBlock Grid.Row="1" Grid.Column="1" Classes="page-sub" Foreground="#EAD9A8" Text="{Binding LiveThermalStatus}" />
                             <TextBlock Grid.Row="2" Classes="page-sub" Text="Memory" />
                             <TextBlock Grid.Row="2" Grid.Column="1" Classes="page-sub" Foreground="#EAD9A8" Text="{Binding LiveMemoryStatus}" />
+                            <TextBlock Grid.Row="3" Classes="page-sub" Text="Data" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Classes="page-sub" Foreground="#EAD9A8" TextWrapping="Wrap" Text="{Binding LiveDataStatus}" />
                         </Grid>
                     </StackPanel>
                 </ScrollViewer>

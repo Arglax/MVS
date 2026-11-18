@@ -59,6 +59,7 @@ base.OnFrameworkInitializationCompleted();
 }
 private void ConfigureServices()
 {
+Diagnostics.CrashGuard.InstallUi();
 AppDomain.CurrentDomain.UnhandledException += (_, e) => Trace.WriteLine($"[Unhandled] {e.ExceptionObject}");
 TaskScheduler.UnobservedTaskException += (_, e) =>
 {

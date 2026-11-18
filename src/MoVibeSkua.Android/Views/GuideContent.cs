@@ -23,7 +23,7 @@ private static readonly Dictionary<string, (string Title, string Text)> GameTips
 ["bottools"] = ("Bot tools", "MVS's other set of side buttons: Scripts, Repo, Auto and more. They let MVS play the game for you. The bot tools guide explains each one."),
 ["script"] = Script,
 ["stats"] = ("Anonymous usage numbers", "Things like phone model, frame rate, how warm the phone got and which buttons get used. They help MVS's maker see what works. Never your name, login, character, scripts, maps or chat."),
-["report"] = ("Crash report", "Yes sends the error together with your phone's specs and country. No sends only the error itself. Account and character names, passwords and e-mail addresses are always taken out.")
+["report"] = ("Crash report", "The error, where it happened, your phone's specs and country, MVS's settings and its recent log. Account and character names, passwords and e-mail addresses are NEVER sent to Arglax. It is sent only when you press OK on the notice.")
 };
 private static readonly Dictionary<string, (string Title, string Text)> BotTips = new()
 {
@@ -143,11 +143,11 @@ public static GuideDoc Game(GuideViewModel vm) => new GuideDoc("MVS Guide")
 .Buttons(true, ("Open the bot tools guide", vm.OpenBotGuideCommand))
 .Section("Privacy", "Privacy")
 .P("MVS sends [stats|anonymous usage numbers]. Never your name, login or chat.")
-.P("If MVS crashes, it asks before sending a [report|crash report]. To stop it asking:")
+.P("If MVS crashes, it tells you what happened and sends a [report|crash report] when you press OK. To turn reports off:")
 .Steps(
 "Tap the *MVS crest* once.",
-"Switch off *Ask me about crash reports*.")
-.Note("With that off, MVS never sends a crash report.")
+"Switch off *Send crash reports*.")
+.Note("With that off, MVS sends only bare minimum info: the error and where it happened, nothing about your phone.")
 .Buttons(false, ("Bot tools", vm.SwitchRailsCommand), ("Support MVS", vm.OpenSupportCommand));
 public static GuideDoc Bot(BotGuideViewModel vm) => new GuideDoc("Bot Tools")
 .Section("First bot", "Your first bot")

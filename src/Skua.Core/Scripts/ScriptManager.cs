@@ -225,6 +225,7 @@ UnloadPreviousScript();
 FixCoreBotsOptionsCase();
 LastStopWasExternal = false;
 string scriptContent = File.ReadAllText(LoadedScript);
+await EnsureIncludesPresentAsync(scriptContent, LoadedScript);
 object? script = await Task.Run(() => Compile(scriptContent));
 IScriptOptionContainer? config = BuildScriptConfig(script, overrideStorage);
 if (config is not null)
@@ -507,9 +508,101 @@ _diagnostics.RecordEvent("Script", cacheHit ? "CompileCacheHit" : "CompileCacheM
 dynamic? assembly = compiler.CompileClass(final, cacheHash, loadContext, scriptName);
 sw.Stop();
 Trace.WriteLine($"Script compilation took {sw.ElapsedMilliseconds}ms.");
-return compiler.Error
-? throw new ScriptCompileException(compiler.ErrorMessage, compiler.GeneratedClassCodeWithLineNumbers)
-: (object?)assembly;
+if (compiler.Error)
+{
+string[] missing = _missingIncludes;
+string message = missing.Length == 0
+? compiler.ErrorMessage
+: $"{MissingIncludesPrefix} {string.Join(", ", missing)}. Open Script Repo and press Download All, then start the script again.{Environment.NewLine}{compiler.ErrorMessage}";
+throw new ScriptCompileException(message, compiler.GeneratedClassCodeWithLineNumbers);
+}
+return (object?)assembly;
+}
+public const string MissingIncludesPrefix = "This script needs files that are not on this device:";
+private volatile string[] _missingIncludes = Array.Empty<string>();
+private async Task EnsureIncludesPresentAsync(string source, string ownerFile)
+{
+_missingIncludes = Array.Empty<string>();
+try
+{
+IGetScriptsService? repo = Ioc.Default.GetService<IGetScriptsService>();
+HashSet<string> visited = new(StringComparer.OrdinalIgnoreCase) { ownerFile };
+HashSet<string> missing = new(StringComparer.OrdinalIgnoreCase);
+Queue<(string source, string owner)> queue = new();
+queue.Enqueue((source, ownerFile));
+int downloads = 0;
+bool listRefreshed = false;
+while (queue.Count > 0)
+{
+(string text, string owner) = queue.Dequeue();
+foreach (string specifier in IncludeSpecifiers(text))
+{
+string? path = ResolveImport(owner, specifier);
+if (path is null && repo is not null && downloads < 200 && RepositoryPath(specifier) is { } repoPath)
+{
+if (repo.Scripts.Count == 0 && !listRefreshed)
+{
+listRefreshed = true;
+try { await repo.GetScriptsAsync(null, default); } catch { }
+}
+Skua.Core.Models.GitHub.ScriptInfo? info = Skua.Core.Models.GitHub.ScriptInfo.Snapshot(repo.Scripts).FirstOrDefault(i =>
+string.Equals(i.FilePath.Replace('\\', '/'), repoPath, StringComparison.OrdinalIgnoreCase));
+if (info is not null)
+{
+try
+{
+downloads++;
+await repo.DownloadScriptAsync(info);
+Trace.WriteLine($"[Scripts] downloaded missing include {info.FilePath}");
+path = ResolveImport(owner, specifier);
+}
+catch (Exception ex)
+{
+Trace.WriteLine($"[Scripts] could not download include {info.FilePath}: {ex.Message}");
+}
+}
+}
+if (path is null)
+{
+missing.Add(specifier);
+continue;
+}
+if (!visited.Add(path) || !path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+continue;
+try { queue.Enqueue((File.ReadAllText(path), path)); } catch { }
+}
+}
+if (missing.Count > 0)
+{
+_missingIncludes = missing.Take(8).ToArray();
+Trace.WriteLine($"[Scripts] includes not found: {string.Join(", ", missing)}");
+}
+}
+catch (Exception ex)
+{
+Trace.WriteLine($"[Scripts] include check failed: {ex.Message}");
+}
+}
+private static IEnumerable<string> IncludeSpecifiers(string source)
+{
+using StringReader reader = new(source);
+string? line;
+while ((line = reader.ReadLine()) != null)
+{
+string trimmed = line.Trim();
+if (!trimmed.StartsWith("//cs_include ", StringComparison.Ordinal))
+continue;
+string specifier = trimmed["//cs_include ".Length..].Trim();
+if (specifier.Length > 0)
+yield return specifier;
+}
+}
+private static string? RepositoryPath(string specifier)
+{
+string normalized = specifier.Trim().Replace('\\', '/');
+if (!normalized.StartsWith("Scripts/", StringComparison.OrdinalIgnoreCase) || normalized.Contains("..", StringComparison.Ordinal))
+return null;
+return normalized["Scripts/".Length..];
 }
 private HashSet<string> GetReferences()
 {

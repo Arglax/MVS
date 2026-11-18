@@ -438,7 +438,7 @@ bool isPinnedFilter = string.Equals(filter, "Pinned", StringComparison.OrdinalIg
 bool isLocalFilter = string.Equals(filter, "Local", StringComparison.OrdinalIgnoreCase);
 if (!isLocalFilter && _getScriptsService?.Scripts != null)
 {
-foreach (ScriptInfo script in _getScriptsService.Scripts)
+foreach (ScriptInfo script in ScriptInfo.Snapshot(_getScriptsService.Scripts))
 {
 string repoKey = script.FilePath.Replace('\\', '/').Trim();
 bool isPinned = pinnedSet.Contains(repoKey) || pinnedSet.Contains(script.LocalFile.Replace('\\', '/').Trim());

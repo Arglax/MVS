@@ -25,7 +25,8 @@ private static int DailyLimit => Usage.RemoteSettings.Current.PerDay;
 private const int MaxError = 2000;
 private const int MaxStack = 8000;
 private static int MaxLog => Usage.RemoteSettings.Current.FullLog ? 48000 : 16000;
-private static bool Allowed => AskEnabled && Usage.RemoteSettings.Current.ReportsEnabled;
+private static bool Allowed => (AskEnabled || OffSendsMinimal) && Usage.RemoteSettings.Current.ReportsEnabled;
+private static bool OffSendsMinimal => !AskEnabled && Prefs?.GetString("reports.off", null) == "minimal";
 private const int MaxContext = 120;
 public const string StateAsk = "ask";
 public const string StateFull = "full";
@@ -55,11 +56,14 @@ return !wasOff;
 }
 set
 {
-Prefs?.Edit()?.PutBoolean("reports.ask", value)?.Apply();
-Usage.UsageTracker.Toggle("crashReports", value);
-Trace.WriteLine($"[Report] asking: {(value ? "on" : "off")}");
+ISharedPreferencesEditor? editor = Prefs?.Edit()?.PutBoolean("reports.ask", value);
 if (!value)
-DropWaiting();
+editor?.PutString("reports.off", "minimal");
+editor?.Apply();
+Usage.UsageTracker.Toggle("crashReports", value);
+Trace.WriteLine($"[Report] full reports: {(value ? "on" : "off (bare minimum only)")}");
+if (!value)
+_ = Task.Run(() => AnswerAsync(full: false));
 }
 }
 public static void Install()
@@ -73,7 +77,14 @@ if (e.ExceptionObject is Exception ex)
 Save("crash", "mvs", ex, null, null, fatal: true);
 };
 global::Android.Runtime.AndroidEnvironment.UnhandledExceptionRaiser += (_, e) =>
+{
+if (CrashGuard.Survive(e.Exception))
+{
+e.Handled = true;
+return;
+}
 Save("crash", "mvs", e.Exception, null, null, fatal: true);
+};
 TaskScheduler.UnobservedTaskException += (_, e) =>
 {
 if (e.Exception.InnerExceptions.All(IsNoise))
@@ -161,10 +172,11 @@ Trace.WriteLine($"[Report] not kept (reports are off): {Cut(error, 160)}");
 return null;
 }
 string id = $"{when:yyyyMMdd-HHmmss}-{signature[..8]}-{RandomNumberGenerator.GetHexString(6, lowercase: true)}";
+bool ask = AskEnabled;
 JsonObject report = new()
 {
 ["id"] = id,
-["state"] = local ? StateLocal : StateAsk,
+["state"] = local ? StateLocal : ask ? StateAsk : StateMinimal,
 ["kind"] = kind,
 ["ts"] = when.ToString("o"),
 ["signature"] = signature,
@@ -173,8 +185,9 @@ JsonObject report = new()
 ["stack"] = Cut(stack, MaxStack),
 ["context"] = ContextMap(page, feature, script),
 ["scrubbed"] = false,
-["full"] = FullPart(fatal, fps, wasmMb, log, appMb),
 };
+if (local || ask)
+report["full"] = FullPart(fatal, fps, wasmMb, log, appMb);
 lock (FileGate)
 {
 Directory.CreateDirectory(Folder);
@@ -182,7 +195,12 @@ File.WriteAllText(Path.Combine(Folder, id + ".json"), report.ToJsonString());
 }
 Trace.WriteLine($"[Report] saved {kind}/{category} {id}: {Cut(error, 160)}");
 if (!local && !fatal)
+{
+if (ask)
 RunNotifier.ShowWhenOnScreen(CrashPrompt.ShowPending);
+else
+_ = Task.Run(UploadDecidedAsync);
+}
 return id;
 }
 catch
@@ -414,17 +432,23 @@ continue;
 yield return (file, report);
 }
 }
-public static IReadOnlyList<string> WaitingKinds()
+public static IReadOnlyList<string> WaitingKinds() => Waiting().Select(w => w.Kind).ToList();
+public static IReadOnlyList<(string Kind, string Error, string Script)> Waiting()
 {
-List<string> kinds = new();
+List<(string Kind, string Error, string Script)> kinds = new();
 if (!Allowed)
 {
+Trace.WriteLine("[Report] not asked: problem reports are off");
 DropWaiting();
 return kinds;
 }
+if (!AskEnabled)
+return kinds;
 Dictionary<string, string> sent = ReadSent();
 string today = DateTime.UtcNow.ToString("yyyyMMdd");
 int room = DailyLimit - sent.Values.Count(d => d == today);
+if (room <= 0)
+Trace.WriteLine($"[Report] not asked: today's limit of {DailyLimit} reports is used up");
 HashSet<string> seen = new(StringComparer.Ordinal);
 foreach ((string file, JsonObject report) in Files())
 {
@@ -437,11 +461,12 @@ if (duplicate || kinds.Count >= room)
 TryDelete(file);
 continue;
 }
-kinds.Add(Str(report, "kind"));
+string script = report["context"] is JsonObject context ? Str(context, "script") : string.Empty;
+kinds.Add((Str(report, "kind"), Str(report, "error"), script));
 }
 return kinds;
 }
-public static async Task AnswerAsync(bool full)
+public static async Task AnswerAsync(bool full = true)
 {
 foreach ((string file, JsonObject report) in Files().ToList())
 {
@@ -479,6 +504,18 @@ if (!Allowed)
 foreach ((string file, _) in decided)
 TryDelete(file);
 return;
+}
+if (!AskEnabled)
+{
+foreach ((string file, JsonObject report) in decided)
+{
+if (Str(report, "state") != StateFull)
+continue;
+report["state"] = StateMinimal;
+report.Remove("full");
+lock (FileGate)
+File.WriteAllText(file, report.ToJsonString());
+}
 }
 if (Usage.UsageSync.Backoff.Active)
 return;

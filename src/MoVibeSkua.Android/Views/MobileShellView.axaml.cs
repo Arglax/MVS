@@ -471,7 +471,7 @@ PageFrame.Width = double.NaN;
 PageFrame.HorizontalAlignment = HorizontalAlignment.Stretch;
 gameRow.Height = new GridLength(1, GridUnitType.Star);
 pageRow.Height = new GridLength(0);
-if (!showPage)
+if (!showPage || width <= 0 || height <= 0)
 return;
 if (width >= height)
 {
@@ -487,9 +487,13 @@ pageRow.Height = new GridLength(1, GridUnitType.Star);
 Place(PageFrame, 1, 0);
 }
 }
-private static double MaxPageWidth(double width) => width - Math.Max(80, width * 0.1);
+private static double MaxPageWidth(double width) => Math.Max(0, width - Math.Max(80, width * 0.1));
 private static double ClampPageWidth(double pageWidth, double width)
-=> Math.Clamp(pageWidth, Math.Min(280, width * 0.5), MaxPageWidth(width));
+{
+double max = MaxPageWidth(width);
+double min = Math.Min(Math.Min(280, Math.Max(0, width * 0.5)), max);
+return double.IsFinite(pageWidth) ? Math.Clamp(pageWidth, min, max) : min;
+}
 private double _gripStartX;
 private double _gripStartWidth;
 private bool _gripDragging;
@@ -503,7 +507,7 @@ e.Handled = true;
 }
 private void OnGripMoved(object? sender, Avalonia.Input.PointerEventArgs e)
 {
-if (!_gripDragging)
+if (!_gripDragging || Body.Bounds.Width <= 0)
 return;
 PageFrame.Width = ClampPageWidth(_gripStartWidth + _gripStartX - e.GetPosition(Body).X, Body.Bounds.Width);
 e.Handled = true;
@@ -514,7 +518,7 @@ if (!_gripDragging)
 return;
 _gripDragging = false;
 pointer?.Capture(null);
-if (_vm?.CurrentPage is { } page && Body.Bounds.Width > 0)
+if (_vm?.CurrentPage is { } page && Body.Bounds.Width > 0 && double.IsFinite(PageFrame.Width))
 _vm.SetPageWidth(page.Key, PageFrame.Width / Body.Bounds.Width);
 }
 private void FitGame()

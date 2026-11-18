@@ -13,8 +13,8 @@ using MoVibeSkua.Android.Views;
 namespace MoVibeSkua.Android.Diagnostics;
 public static class CrashPrompt
 {
-public const string AskCrashed = "MVS has crashed. Send error report and crash log to the developer?";
-public const string AskProblem = "MVS ran into a problem. Send error report and crash log to the developer?";
+public const string AskCrashed = "MVS has crashed.";
+public const string AskProblem = "MVS ran into a problem.";
 private static int _showing;
 public static bool IsShowing => Volatile.Read(ref _showing) == 1;
 public static void WhenReady()
@@ -34,9 +34,17 @@ return;
 _ = Task.Run(() =>
 {
 IReadOnlyList<string> kinds;
+string why = string.Empty;
 try
 {
-kinds = ProblemReports.WaitingKinds();
+IReadOnlyList<(string Kind, string Error, string Script)> waiting = ProblemReports.Waiting();
+kinds = waiting.Select(w => w.Kind).ToList();
+if (waiting.Count > 0)
+{
+(string Kind, string Error, string Script) worst = waiting
+.OrderBy(w => w.Kind == "crash" ? 0 : w.Kind == "engine" ? 1 : 2).First();
+why = CrashReasons.Explain(worst.Kind, worst.Error, worst.Script);
+}
 }
 catch
 {
@@ -57,18 +65,31 @@ return;
 }
 Usage.UsageTracker.Feature("crashPromptShown");
 Trace.WriteLine($"[Report] asking about {kinds.Count} report(s)");
-Platform.Modal.Show(close => Build(title, answer =>
+Platform.Modal.Show(close => Build(title, why, answer =>
 {
 close(string.Empty);
 Interlocked.Exchange(ref _showing, 0);
 Usage.UsageTracker.Feature(answer ? "crashPromptYes" : "crashPromptNo");
-Trace.WriteLine($"[Report] player answered {(answer ? "Yes (full)" : "No (minimal)")}");
-_ = Task.Run(() => ProblemReports.AnswerAsync(answer));
+Trace.WriteLine($"[Report] player answered {(answer ? "OK (full report)" : "Turn reports off (bare minimum)")}");
+if (answer)
+_ = Task.Run(() => ProblemReports.AnswerAsync());
+else
+ProblemReports.AskEnabled = false;
 }));
 });
 });
 }
-private static Control Build(string title, Action<bool> answer)
+public static void ShowSample(string kind, string error, string script)
+{
+string title = kind is "crash" or "engine" ? AskCrashed : AskProblem;
+string why = CrashReasons.Explain(kind, error, script);
+Dispatcher.UIThread.Post(() =>
+{
+if (MobileShellView.Instance is not null)
+Platform.Modal.Show(close => Build(title, why, _ => close(string.Empty)));
+});
+}
+private static Control Build(string title, string why, Action<bool> answer)
 {
 bool answered = false;
 void Answer(bool full)
@@ -78,18 +99,38 @@ return;
 answered = true;
 answer(full);
 }
-TextBlock question = new() { Text = title, FontSize = 16, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap };
-Button yes = new() { Content = "Yes", MinWidth = 80, Classes = { "skua-button", "skua-primary" } };
+TextBlock question = new()
+{
+Text = title,
+FontSize = 16,
+FontWeight = FontWeight.SemiBold,
+TextWrapping = TextWrapping.Wrap,
+TextAlignment = TextAlignment.Center,
+HorizontalAlignment = HorizontalAlignment.Center,
+};
+Button yes = new() { Content = "OK, send report", MinWidth = 80, Classes = { "skua-button", "skua-primary" } };
 yes.Click += (_, _) => Answer(true);
-Button no = new() { Content = "No", MinWidth = 80, Classes = { "skua-button" } };
+Button no = new() { Content = "Turn reports off", MinWidth = 80, Classes = { "skua-button" } };
 no.Click += (_, _) => Answer(false);
 StackPanel buttons = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
 buttons.Children.Add(yes);
 buttons.Children.Add(no);
-Grid layout = new() { RowDefinitions = new RowDefinitions("Auto,Auto"), RowSpacing = 16, Margin = new Thickness(16) };
+TextBlock reason = new()
+{
+Text = why,
+FontSize = 13,
+Opacity = 0.85,
+TextWrapping = TextWrapping.Wrap,
+IsVisible = why.Length > 0,
+};
+ScrollViewer reasonScroll = new() { Content = reason, MaxHeight = 250, IsVisible = why.Length > 0 };
+reasonScroll.Loaded += (_, _) => Dispatcher.UIThread.Post(reasonScroll.ScrollToHome, DispatcherPriority.Background);
+Grid layout = new() { RowDefinitions = new RowDefinitions("Auto,Auto,Auto"), RowSpacing = 12, Margin = new Thickness(16), MaxWidth = 600 };
 Grid.SetRow(question, 0);
-Grid.SetRow(buttons, 1);
+Grid.SetRow(reasonScroll, 1);
+Grid.SetRow(buttons, 2);
 layout.Children.Add(question);
+layout.Children.Add(reasonScroll);
 layout.Children.Add(buttons);
 Border card = new() { Child = layout };
 card.Classes.Add("mobile-dialog");

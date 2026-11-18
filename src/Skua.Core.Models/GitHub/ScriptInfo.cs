@@ -95,4 +95,27 @@ public override string ToString()
 {
 return FileName;
 }
+public static List<ScriptInfo> Snapshot(IEnumerable<ScriptInfo>? source)
+{
+if (source is null)
+return new List<ScriptInfo>();
+for (int attempt = 0; attempt < 6; attempt++)
+{
+try
+{
+List<ScriptInfo> copy = new();
+foreach (ScriptInfo info in source)
+{
+if (info is not null)
+copy.Add(info);
+}
+return copy;
+}
+catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IndexOutOfRangeException or NullReferenceException)
+{
+System.Threading.Thread.Sleep(25);
+}
+}
+return new List<ScriptInfo>();
+}
 }

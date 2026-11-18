@@ -380,7 +380,11 @@ catch
 private static void HookCrashes()
 {
 AppDomain.CurrentDomain.UnhandledException += (_, _) => OnCrash();
-global::Android.Runtime.AndroidEnvironment.UnhandledExceptionRaiser += (_, _) => OnCrash();
+global::Android.Runtime.AndroidEnvironment.UnhandledExceptionRaiser += (_, e) =>
+{
+if (!Diagnostics.CrashGuard.Survive(e.Exception))
+OnCrash();
+};
 }
 private static void OnCrash()
 {

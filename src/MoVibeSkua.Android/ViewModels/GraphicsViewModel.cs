@@ -85,6 +85,10 @@ private string _liveThermalStatus = "Normal";
 [ObservableProperty]
 private string _liveMemoryStatus = "Checking...";
 [ObservableProperty]
+private string _liveDataStatus = "Checking...";
+private double _lastDataMb = -1;
+private long _lastDataAt;
+[ObservableProperty]
 private string _livePacingStatus = "30 FPS locked";
 private DispatcherTimer? _telemetryTimer;
 [ObservableProperty]
@@ -165,6 +169,17 @@ _ => "Normal"
 LiveThermalStatus = battery > 0 ? $"{statusStr} ({battery:0.0}°C)" : statusStr;
 Services.MemoryMetrics mem = guard.GetMemoryMetrics();
 LiveMemoryStatus = $"{mem.UsedMb:0} MB used / {mem.AvailableMb:0} MB free (Total: {mem.TotalMb:0} MB)";
+double totalMb = Skua.Flash.Ruffle.NetMeter.TotalMb;
+long now = System.Diagnostics.Stopwatch.GetTimestamp();
+double seconds = _lastDataMb < 0 ? 0 : (now - _lastDataAt) / (double)System.Diagnostics.Stopwatch.Frequency;
+double kbPerSecond = seconds > 0.5 ? Math.Max(0, totalMb - _lastDataMb) * 1024 / seconds : 0;
+_lastDataMb = totalMb;
+_lastDataAt = now;
+string rate = kbPerSecond >= 1024
+? (kbPerSecond / 1024).ToString("0.0", CultureInfo.InvariantCulture) + " MB/s"
+: kbPerSecond.ToString("0", CultureInfo.InvariantCulture) + " KB/s";
+LiveDataStatus = string.Create(CultureInfo.InvariantCulture,
+$"{rate} now · {Skua.Flash.Ruffle.NetMeter.LastMinuteMb:0.0} MB last minute · {totalMb:0.0} MB since start");
 }
 [RelayCommand]
 private void ApplyPreset(string preset)

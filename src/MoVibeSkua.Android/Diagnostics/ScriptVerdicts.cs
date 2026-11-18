@@ -8,7 +8,7 @@ using Skua.Core.Models;
 namespace MoVibeSkua.Android.Diagnostics;
 public static class ScriptVerdicts
 {
-public enum Who { Script, Mvs }
+public enum Who { Script, Mvs, Setup }
 public sealed record Verdict(Who Who, string Reason, string Short);
 private static readonly Regex WindowsOnly = new(
 @"System\.Windows|System\.Drawing|Microsoft\.Win32|WindowsBase|PresentationFramework|PresentationCore|WinForms|" +
@@ -29,6 +29,8 @@ if (ex is ScriptCompileException)
 string message = ex.Message ?? string.Empty;
 Match first = CompileError.Match(message);
 string shortText = first.Success ? $"line {first.Groups[1].Value}: {first.Groups[3].Value.Trim()}" : FirstLine(message);
+if (message.StartsWith(Skua.Core.Scripts.ScriptManager.MissingIncludesPrefix, StringComparison.Ordinal))
+return new(Who.Setup, "Some of the script's files are not downloaded.", FirstLine(message));
 if (WindowsOnly.IsMatch(message))
 return new(Who.Mvs, "The script uses a Windows-only feature that MVS on Android does not have yet.", shortText);
 if (MissingBotApi.IsMatch(message))

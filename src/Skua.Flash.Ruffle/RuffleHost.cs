@@ -265,6 +265,7 @@ await Task.Delay(waits[attempt], ct).ConfigureAwait(false);
 }
 using HttpResponseMessage response = sent;
 byte[] content = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+NetMeter.Download(uri.AbsolutePath, content.Length + body.Length);
 List<KeyValuePair<string, string>> headers = new()
 {
 new("X-Content-Type-Options", "nosniff"),
@@ -385,6 +386,7 @@ WebSocketReceiveResult result = await socket.ReceiveAsync(buffer, linked.Token).
 if (result.MessageType == WebSocketMessageType.Close)
 break;
 await net.WriteAsync(buffer.AsMemory(0, result.Count), linked.Token).ConfigureAwait(false);
+NetMeter.Socket(result.Count);
 }
 }, linked.Token);
 Task downstream = Task.Run(async () =>
@@ -392,7 +394,10 @@ Task downstream = Task.Run(async () =>
 byte[] buffer = new byte[32 * 1024];
 int read;
 while ((read = await net.ReadAsync(buffer, linked.Token).ConfigureAwait(false)) > 0)
+{
+NetMeter.Socket(read);
 await socket.SendAsync(buffer.AsMemory(0, read), WebSocketMessageType.Binary, true, linked.Token).ConfigureAwait(false);
+}
 }, linked.Token);
 try
 {

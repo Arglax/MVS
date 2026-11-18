@@ -40,11 +40,61 @@ System.Diagnostics.Trace.Listeners.Add(new Platform.LogcatTraceListener());
 Platform.LogcatLogMirror.Start();
 Diagnostics.AppLog.Start();
 Diagnostics.ProblemReports.Install();
+if (Platform.Army.IsFirst)
+Diagnostics.SelfTest.RunIfAsked();
 Platform.AndroidBootstrap.Prepare(this);
 base.OnCreate(savedInstanceState);
+HideFromScreenReaders();
 Window?.AddFlags(WindowManagerFlags.KeepScreenOn);
 Services.PerformanceMode.Apply(this);
 Services.PerformanceGuard.Instance.Initialize(this);
+}
+private void HideFromScreenReaders()
+{
+if (Platform.DevMode.IsOn)
+{
+System.Diagnostics.Trace.WriteLine("[Access] developer mode: pages stay readable by accessibility apps");
+return;
+}
+void Apply()
+{
+try
+{
+if (FindViewById<ViewGroup>(global::Android.Resource.Id.Content) is { } content)
+Strip(content);
+}
+catch (System.Exception ex)
+{
+System.Diagnostics.Trace.WriteLine($"[Access] {ex.Message}");
+}
+}
+Apply();
+global::Android.OS.Handler handler = new(global::Android.OS.Looper.MainLooper!);
+handler.PostDelayed(Apply, 1500);
+handler.PostDelayed(Apply, 6000);
+}
+private static bool _accessLogged;
+private static void Strip(View view)
+{
+if (view.Class?.Name?.Contains("AvaloniaView", System.StringComparison.Ordinal) == true)
+{
+AndroidX.Core.View.ViewCompat.SetAccessibilityDelegate(view, null);
+view.ImportantForAccessibility = ImportantForAccessibility.NoHideDescendants;
+if (!_accessLogged)
+{
+_accessLogged = true;
+System.Diagnostics.Trace.WriteLine("[Access] MVS's pages are not offered to accessibility apps (Avalonia fault)");
+}
+return;
+}
+if (view is ViewGroup group)
+{
+for (int i = 0; i < group.ChildCount; i++)
+{
+if (group.GetChildAt(i) is { } child)
+Strip(child);
+}
+}
 }
 public override void OnTrimMemory(global::Android.Content.TrimMemory level)
 {

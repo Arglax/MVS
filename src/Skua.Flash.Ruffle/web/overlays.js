@@ -134,7 +134,12 @@
     let last = null;
     let lastAt = 0;
     let clock = 0;
-    let hiddenRun = store.get("scriptHiddenRun", -1);
+    const hiddenStore = {
+        get() { try { const v = sessionStorage.getItem("mvs.scriptHiddenRun"); return v === null ? -1 : Number(v); } catch (e) { return -1; } },
+        set(v) { try { sessionStorage.setItem("mvs.scriptHiddenRun", String(v)); } catch (e) { } }
+    };
+    try { store.set("scriptHiddenRun", -1); } catch (e) { }
+    let hiddenRun = hiddenStore.get();
     function fmt(secs) {
         secs = Math.max(0, Math.floor(secs));
         const h = Math.floor(secs / 3600), m = Math.floor(secs / 60) % 60, s = secs % 60;
@@ -166,7 +171,7 @@
         el.querySelector(".hide-b").addEventListener("click", e => {
             e.stopPropagation();
             hiddenRun = last ? last.id : -1;
-            store.set("scriptHiddenRun", hiddenRun);
+            hiddenStore.set(hiddenRun);
             render();
         });
         dragBy(el.querySelector(".hd"), el);
