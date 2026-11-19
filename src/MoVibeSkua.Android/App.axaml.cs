@@ -89,7 +89,8 @@ Port = 47911,
 Quality = "high",
 MaxPixelRatio = ViewModels.GraphicsViewModel.StartupPixelRatio(),
 PreferredRenderer = "webgl",
-TouchListRowHeight = Platform.DeviceProfile.Current.IsPhone ? 60 : 0
+TouchListRowHeight = Platform.DeviceProfile.Current.IsPhone ? 60 : 0,
+EngineMemory = Diagnostics.SelfTest.EngineMemory() is { Length: > 0 } engineMemory ? engineMemory : "fork"
 }));
 services.AddSingleton<RuffleFlashUtil>();
 services.AddSingleton<IFlashUtil>(s => s.GetRequiredService<RuffleFlashUtil>());

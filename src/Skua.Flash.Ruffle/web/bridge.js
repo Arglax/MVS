@@ -645,6 +645,12 @@
         }
         window.__mvsAs3Consts = consts;
         window.__arglaxNoBatch = true;
+        const keep = String(cfg.engineMemory || "fork").toLowerCase();
+        const kept = name => keep === "fork" || keep.split(",").indexOf(name) >= 0;
+        window.__mvsUpstreamLibraries = !kept("libs");
+        window.__mvsStrongDicts = !kept("dicts");
+        window.__mvsStrongHandlers = !kept("handlers");
+        log("engine memory features kept on: " + (["libs", "dicts", "handlers"].filter(kept).join(", ") || "none (stock Ruffle)"));
         window.addEventListener("error", e => {
             log("page error: " + e.message);
             if (/RuntimeError|panicked/.test(String(e.message))) {

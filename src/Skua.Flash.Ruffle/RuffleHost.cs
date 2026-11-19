@@ -465,6 +465,7 @@ w.WriteNumber("frameRate", _options.FrameRate);
 w.WriteNumber("maxPixelRatio", _options.MaxPixelRatio);
 w.WriteString("preferredRenderer", _options.PreferredRenderer);
 w.WriteNumber("touchRowH", _options.TouchListRowHeight);
+w.WriteString("engineMemory", _options.EngineMemory);
 w.WriteStartArray("socketProxy");
 foreach ((string host, int port) in sockets)
 {

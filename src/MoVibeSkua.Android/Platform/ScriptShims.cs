@@ -25,9 +25,30 @@ public const string Source = """
             public static bool IsWasi() => false;
             public static bool IsFreeBSD() => false;
         }
-        // Target of Process.Start("explorer", x) calls, which the compiler rewrites: opens web links in the phone's browser.
+        // Target of every Process.Start(...) call, which the compiler rewrites: web links open in the
+        // phone's browser; Windows programs (Explorer on a folder, Notepad, installers) do not exist
+        // here, so they are logged and skipped. Null stands for "nothing was started", as it does on Windows.
         internal static class ScriptShell
         {
+            public static global::System.Diagnostics.Process Start(string fileName) => Start(fileName, (string)null);
+            public static global::System.Diagnostics.Process Start(string fileName, string arguments)
+            {
+                string file = (fileName ?? string.Empty).Trim().Trim('"');
+                string args = (arguments ?? string.Empty).Trim().Trim('"');
+                if (IsLink(file))
+                    return Open(file);
+                if (IsLink(args))
+                    return Open(args);
+                global::System.Diagnostics.Trace.WriteLine("[Script] not started on a phone: " + global::System.IO.Path.GetFileName(file));
+                return null;
+            }
+            public static global::System.Diagnostics.Process Start(string fileName, global::System.Collections.Generic.IEnumerable<string> arguments) =>
+                Start(fileName, arguments is null ? null : string.Join(" ", arguments));
+            public static global::System.Diagnostics.Process Start(global::System.Diagnostics.ProcessStartInfo info) =>
+                info is null ? null : Start(info.FileName, info.Arguments);
+            private static bool IsLink(string text) =>
+                text.StartsWith("https://", global::System.StringComparison.OrdinalIgnoreCase)
+                || text.StartsWith("http://", global::System.StringComparison.OrdinalIgnoreCase);
             public static global::System.Diagnostics.Process Open(string target)
             {
                 global::Skua.Core.Utils.Link.OpenBrowser((target ?? string.Empty).Trim().Trim('"'));

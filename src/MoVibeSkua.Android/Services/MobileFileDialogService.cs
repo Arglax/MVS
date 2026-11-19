@@ -82,7 +82,10 @@ Directory.CreateDirectory(ImportDirectory);
 List<string> paths = new();
 foreach (IStorageFile file in picked)
 {
-string destination = Path.Combine(ImportDirectory, file.Name);
+string name = Path.GetFileName((file.Name ?? string.Empty).Replace((char)92, '/'));
+if (string.IsNullOrWhiteSpace(name) || name is "." or "..")
+name = "imported-" + Guid.NewGuid().ToString("N")[..8];
+string destination = Path.Combine(ImportDirectory, name);
 await using Stream input = await file.OpenReadAsync();
 await using FileStream output = File.Create(destination);
 await input.CopyToAsync(output);

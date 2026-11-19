@@ -23,22 +23,54 @@ private static string? _pendingUrl;
 private static string? _lastUrl;
 private static double _visibleFraction = 1;
 private static double _visibleLeft;
-public static AWebView? WebView => _webView;
+public static AWebView? WebView => Live();
+private static AWebView? Live()
+{
+AWebView? view = _webView;
+try
+{
+return view is null || view.Handle == IntPtr.Zero ? null : view;
+}
+catch (ObjectDisposedException)
+{
+return null;
+}
+}
+private static void OnView(Action<AWebView> work)
+{
+try
+{
+AWebView? view = Live();
+view?.Post(() =>
+{
+try
+{
+if (view.Handle != IntPtr.Zero)
+work(view);
+}
+catch (ObjectDisposedException)
+{
+}
+});
+}
+catch (ObjectDisposedException)
+{
+}
+}
 protected override AutomationPeer OnCreateAutomationPeer() => new ControlAutomationPeer(this);
 public static void Navigate(string url)
 {
 _lastUrl = url;
-if (_webView is null)
+if (Live() is null)
 {
 _pendingUrl = url;
 return;
 }
-_webView.Post(() => _webView.LoadUrl(url));
+OnView(view => view.LoadUrl(url));
 }
 public static void SetCovered(bool covered)
 {
-AWebView? view = _webView;
-view?.Post(() => view.Alpha = covered ? 0f : 1f);
+OnView(view => view.Alpha = covered ? 0f : 1f);
 }
 public static void SetVisibleFraction(double fraction) => SetVisibleRange(_visibleLeft, fraction);
 public static void SetVisibleRange(double left, double right)
@@ -49,8 +81,7 @@ if (right == _visibleFraction && left == _visibleLeft)
 return;
 _visibleFraction = right;
 _visibleLeft = left;
-AWebView? view = _webView;
-view?.Post(() => ApplyClip(view));
+OnView(ApplyClip);
 }
 private static int VisibleWidth(AView view) =>
 _visibleFraction >= 1 ? view.Width : (int)Math.Round(view.Width * _visibleFraction);
@@ -64,7 +95,9 @@ view.ClipBounds = _visibleFraction >= 1 && _visibleLeft <= 0
 }
 public static bool Contains(float screenX, float screenY)
 {
-AWebView? view = _webView;
+try
+{
+AWebView? view = Live();
 if (view is null || !view.IsShown || view.Alpha == 0f)
 return false;
 int[] location = new int[2];
@@ -72,11 +105,15 @@ view.GetLocationOnScreen(location);
 return screenX >= location[0] + VisibleLeft(view) && screenX < location[0] + VisibleWidth(view)
 && screenY >= location[1] && screenY < location[1] + view.Height;
 }
+catch (ObjectDisposedException)
+{
+return false;
+}
+}
 public static void ShowKeyboard()
 {
 Usage.UsageTracker.Track(Usage.Signal.GAME_KEYBOARD);
-AWebView? view = _webView;
-view?.Post(() =>
+OnView(view =>
 {
 if (!view.HasFocus)
 view.RequestFocus();
@@ -86,8 +123,7 @@ imm?.ShowSoftInput(view, 0);
 }
 public static void Resume()
 {
-AWebView? view = _webView;
-view?.Post(() =>
+OnView(view =>
 {
 view.OnResume();
 view.ResumeTimers();

@@ -39,6 +39,7 @@ Skua.Core.Compiler.RedirectExplorerCalls = true;
 Skua.Core.Utils.Link.Opener = OpenWebLink;
 CopyAssetFolder(context, "seed", ClientFileSources.SkuaDIR, overwrite: false);
 CopyAssetFolder(context, "plugins", ClientFileSources.SkuaPluginsDIR, overwrite: Army.IsFirst);
+Skua.Core.Plugins.PluginManager.StartupFilter = BundledPluginFilter(context);
 }
 catch (Exception ex)
 {
@@ -51,6 +52,35 @@ if (Uri.TryCreate(link, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.Ur
 new MoVibeSkua.Android.Services.AndroidProcessService().OpenLink(uri.AbsoluteUri);
 else
 Trace.WriteLine($"[Links] not opened on the phone: {link}");
+}
+private static Func<string, bool> BundledPluginFilter(Context context)
+{
+HashSet<string> bundled = new(StringComparer.OrdinalIgnoreCase);
+try
+{
+foreach (string name in context.Assets?.List("plugins") ?? Array.Empty<string>())
+{
+using Stream asset = context.Assets!.Open("plugins/" + name);
+using MemoryStream copy = new();
+asset.CopyTo(copy);
+bundled.Add(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(copy.ToArray())));
+}
+}
+catch (Exception ex)
+{
+Trace.WriteLine($"[Plugins] bundled list not read: {ex.Message}");
+}
+return file =>
+{
+try
+{
+return bundled.Contains(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(file))));
+}
+catch
+{
+return false;
+}
+};
 }
 private static void CopyAssetFolder(Context context, string assetFolder, string target, bool overwrite)
 {

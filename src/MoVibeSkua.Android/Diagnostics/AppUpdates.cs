@@ -46,7 +46,7 @@ if (MobileShellView.Instance is null)
 return;
 if (latest is not null && IsNewer(latest, current))
 {
-string link = Get(info, "apk_url") ?? Get(info, "release_url") ?? DefaultReleaseUrl;
+string link = TrustedLink(Get(info, "apk_url")) ?? TrustedLink(Get(info, "release_url")) ?? DefaultReleaseUrl;
 await ShowAsync(close => BuildUpdate(latest, current, link, close));
 }
 string? noticeId = Get(info, "notice_id");
@@ -83,6 +83,18 @@ continue;
 values[line[..colon].Trim()] = line[(colon + 1)..].Trim();
 }
 return values;
+}
+private static string? TrustedLink(string? link)
+{
+if (link is null || !Uri.TryCreate(link, UriKind.Absolute, out Uri? uri))
+return null;
+bool ok = uri.Scheme == Uri.UriSchemeHttps
+&& uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
+&& uri.AbsolutePath.StartsWith("/Arglax/MVS/releases/", StringComparison.OrdinalIgnoreCase)
+&& string.IsNullOrEmpty(uri.UserInfo);
+if (!ok)
+Trace.WriteLine("[Updates] download link ignored: not MVS's releases page");
+return ok ? uri.AbsoluteUri : null;
 }
 private static string? Get(Dictionary<string, string> info, string key) =>
 info.TryGetValue(key, out string? value) && value.Length > 0 ? value : null;

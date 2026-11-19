@@ -197,6 +197,7 @@ private static readonly Regex Emails = Rx(@"[\w.+-]+@[\w-]+\.[\w.-]+");
 private static readonly Regex UserPaths = Rx(
 @"(?i)(/data/user(_de)?/\d+|/data/data|/storage/emulated/\d+|/sdcard|[A-Z]:\\Users\\[^\\\s""']+|/home/[^/\s""']+|/Users/[^/\s""']+)");
 private static readonly Regex Webhooks = Rx(@"/api/webhooks/\d+/[\w-]+");
+private static readonly Regex LocalToken = Rx(@"(127\.0\.0\.1|localhost)(:\d+)?/[0-9a-fA-F]{16,64}(?![0-9a-fA-F])");
 public const string Hidden = "<redacted>";
 public static string Redact(string text)
 {
@@ -207,6 +208,7 @@ foreach (string secret in KnownSecrets())
 if (secret.Length >= 3)
 text = text.Replace(secret, Hidden, StringComparison.OrdinalIgnoreCase);
 }
+text = LocalToken.Replace(text, m => m.Groups[1].Value + m.Groups[2].Value + "/<token>");
 text = Webhooks.Replace(text, "/api/webhooks/" + Hidden);
 text = Emails.Replace(text, Hidden);
 text = UserPaths.Replace(text, Hidden);

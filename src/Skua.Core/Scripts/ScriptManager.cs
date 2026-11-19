@@ -226,6 +226,7 @@ FixCoreBotsOptionsCase();
 LastStopWasExternal = false;
 string scriptContent = File.ReadAllText(LoadedScript);
 await EnsureIncludesPresentAsync(scriptContent, LoadedScript);
+await ConfirmUnofficialAsync();
 object? script = await Task.Run(() => Compile(scriptContent));
 IScriptOptionContainer? config = BuildScriptConfig(script, overrideStorage);
 if (config is not null)
@@ -520,9 +521,34 @@ return (object?)assembly;
 }
 public const string MissingIncludesPrefix = "This script needs files that are not on this device:";
 private volatile string[] _missingIncludes = Array.Empty<string>();
+private string[] _startFiles = Array.Empty<string>();
+private async Task ConfirmUnofficialAsync()
+{
+string[] files = _startFiles.Length > 0 ? _startFiles : new[] { LoadedScript };
+List<ScriptTrust.Finding> findings = await Task.Run(() =>
+{
+IGetScriptsService? repo = Ioc.Default.GetService<IGetScriptsService>();
+return ScriptTrust.Check(files, repo is null ? null : Skua.Core.Models.GitHub.ScriptInfo.Snapshot(repo.Scripts));
+});
+if (findings.Count == 0)
+return;
+Trace.WriteLine($"[Trust] not official: {string.Join(", ", findings.Select(f => Path.GetFileName(f.File)))}");
+IDialogService? dialogs = Ioc.Default.GetService<IDialogService>();
+bool? answer = dialogs is null
+? false
+: await Task.Run(() => dialogs.ShowMessageBox(ScriptTrust.Describe(findings), "Unofficial script", true));
+if (answer != true)
+{
+Trace.WriteLine("[Trust] the player did not allow it");
+throw new ScriptTrustException("Not started: this script is not an official one and was not allowed to run.");
+}
+ScriptTrust.Approve(findings);
+Trace.WriteLine("[Trust] allowed by the player");
+}
 private async Task EnsureIncludesPresentAsync(string source, string ownerFile)
 {
 _missingIncludes = Array.Empty<string>();
+_startFiles = new[] { ownerFile };
 try
 {
 IGetScriptsService? repo = Ioc.Default.GetService<IGetScriptsService>();
@@ -572,6 +598,7 @@ continue;
 try { queue.Enqueue((File.ReadAllText(path), path)); } catch { }
 }
 }
+_startFiles = visited.ToArray();
 if (missing.Count > 0)
 {
 _missingIncludes = missing.Take(8).ToArray();

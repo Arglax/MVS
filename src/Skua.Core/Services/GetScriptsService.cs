@@ -352,6 +352,7 @@ finally
 {
 try { File.Delete(temporaryFile); } catch { }
 }
+Skua.Core.Scripts.ScriptTrust.RecordOfficial(info.FilePath, scriptBytes);
 info.CachedDownloaded = true;
 info.CachedLocalSize = scriptBytes.Length;
 }

@@ -39,6 +39,11 @@ return "The script";
 }
 private static void Handle(Exception error, bool starting)
 {
+if (ScriptVerdicts.Unwrap(error) is Skua.Core.Models.ScriptTrustException)
+{
+Trace.WriteLine($"[Script] {ScriptName()} not started: unofficial, not allowed by the player");
+return;
+}
 ScriptVerdicts.Verdict verdict;
 try
 {

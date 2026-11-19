@@ -1,7 +1,7 @@
 # MVS version file, read by the app to offer updates and show notices.
-version: 1.0.2
+version: 1.0.3
 release_url: https://github.com/Arglax/MVS/releases/latest
-apk_url: https://github.com/Arglax/MVS/releases/latest/download/MVS_v1-0-2.apk
-notice_id: 2026-11-19-1.0.2
-notice_title: MVS 1.0.2
-notice_text: Fixes from your reports: the "Width -80" crash, scripts failing with "CoreBots could not be found", and the Bot only (moon) button disappearing. MVS also keeps running after most app errors and tells you what happened when something breaks.
+apk_url: https://github.com/Arglax/MVS/releases/latest/download/MVS_v1-0-3.apk
+notice_id: 2026-11-19-1.0.3
+notice_title: MVS 1.0.3
+notice_text: More fixes from your reports: scripts that failed with "ViewModels does not exist" now start, and scripts that start a Windows program no longer fail. New: MVS asks before running a script that is not from the Script Repo. Scripts from the Script Repo run as before.

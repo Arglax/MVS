@@ -96,6 +96,11 @@ public override bool ShouldOverrideUrlLoading(AWebView? view, IWebResourceReques
 AUri? uri = request?.Url;
 if (uri is null || (uri.Scheme == "https" && string.Equals(uri.Host, "account.aq.com", StringComparison.OrdinalIgnoreCase)))
 return false;
+if (uri.Scheme is not ("https" or "http"))
+{
+Trace.WriteLine($"[WebSheet] link not opened: {uri.Scheme}:");
+return true;
+}
 try
 {
 Intent intent = new(Intent.ActionView, uri);

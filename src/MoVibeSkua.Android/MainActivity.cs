@@ -51,6 +51,7 @@ Services.PerformanceGuard.Instance.Initialize(this);
 }
 private void HideFromScreenReaders()
 {
+DisarmToggleFault();
 if (Platform.DevMode.IsOn)
 {
 System.Diagnostics.Trace.WriteLine("[Access] developer mode: pages stay readable by accessibility apps");
@@ -72,6 +73,30 @@ Apply();
 global::Android.OS.Handler handler = new(global::Android.OS.Looper.MainLooper!);
 handler.PostDelayed(Apply, 1500);
 handler.PostDelayed(Apply, 6000);
+}
+private static bool _toggleFaultDisarmed;
+private static void DisarmToggleFault()
+{
+if (_toggleFaultDisarmed)
+return;
+_toggleFaultDisarmed = true;
+try
+{
+System.Reflection.FieldInfo? field = typeof(AvaloniaView).Assembly
+.GetType("Avalonia.Android.Automation.ToggleNodeInfoProvider")
+?.GetField("s_checkedProperty", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+if (field is null)
+{
+System.Diagnostics.Trace.WriteLine("[Access] switch fault not disarmed: Avalonia's field was not found");
+return;
+}
+field.SetValue(null, typeof(System.Exception).GetProperty(nameof(System.Exception.Message)));
+System.Diagnostics.Trace.WriteLine("[Access] switch fault disarmed");
+}
+catch (System.Exception ex)
+{
+System.Diagnostics.Trace.WriteLine($"[Access] switch fault not disarmed: {ex.Message}");
+}
 }
 private static bool _accessLogged;
 private static void Strip(View view)

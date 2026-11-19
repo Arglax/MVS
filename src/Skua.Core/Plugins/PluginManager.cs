@@ -12,6 +12,7 @@ public class PluginManager : IPluginManager
 {
 private Dictionary<ISkuaPlugin, IPluginContainer> _plugins = new();
 public List<IPluginContainer> Containers => _plugins.Values.ToList();
+public static Func<string, bool>? StartupFilter { get; set; }
 public void Initialize()
 {
 Directory.CreateDirectory(Path.Combine(ClientFileSources.SkuaPluginsDIR, "options"));
@@ -33,6 +34,11 @@ Directory.GetFiles(ClientFileSources.SkuaPluginsDIR)
 .Where(f => f.EndsWith(".dll"))
 .ForEach(f =>
 {
+if (StartupFilter is { } allowed && !allowed(f))
+{
+Trace.WriteLine($"[Plugins] not loaded, it did not come with the app: {Path.GetFileName(f)}");
+return;
+}
 Exception? e = Load(f);
 if (e is not null)
 Trace.WriteLine($"Error while loading plugin '{f}': {e.Message}");
