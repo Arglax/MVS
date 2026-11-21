@@ -7,8 +7,18 @@
              x:DataType="vm:LoginViewModel">
     <ScrollViewer>
         <StackPanel Margin="16" Spacing="10" MaxWidth="480">
-            <TextBlock Text="Saved on this phone only, encrypted with its keystore. MVS keeps you logged in and relogs after disconnects."
+            <TextBlock Text="Saved on this phone only, encrypted with its keystore."
                        TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+            <Border Padding="12,8" CornerRadius="12" Background="{DynamicResource SkuaSurfaceAltBrush}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="Log back in after a disconnect" FontWeight="SemiBold" />
+                        <TextBlock Text="Off: MVS never logs in by itself, and a script stops when the connection drops. On: MVS logs back in and restarts the script."
+                                   TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+                    </StackPanel>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoRelogin}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
             <ItemsControl ItemsSource="{Binding Accounts}" IsVisible="{Binding HasAccounts}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="platform:SavedAccount">

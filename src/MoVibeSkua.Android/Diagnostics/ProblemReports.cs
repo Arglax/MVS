@@ -342,6 +342,8 @@ continue;
 DateTime died = DateTimeOffset.FromUnixTimeMilliseconds(info.Timestamp).UtcDateTime;
 string clues = TraceClues(info);
 string error = $"MVS closed unexpectedly: {what}" + (string.IsNullOrEmpty(info.Description) ? "" : $" ({info.Description})");
+if (SelfTest.NativeTest)
+error = "MVS self-test: " + error;
 string firstClue = clues.Split('\n')[0];
 string signature = Hash("crash|" + what + "|" + Regex.Replace(firstClue, @"0x[0-9a-fA-F]+|\d+", "#"));
 SaveRaw("crash", "mvs", error, clues, signature, died, fatal: true, fps: null, wasmMb: null,
@@ -371,10 +373,22 @@ try
 using Stream? stream = info.TraceInputStream;
 if (stream is null)
 return string.Empty;
-byte[] buffer = new byte[256 * 1024];
+byte[] buffer = new byte[2 * 1024 * 1024];
 int read = 0, n;
 while (read < buffer.Length && (n = stream.Read(buffer, read, buffer.Length - read)) > 0)
 read += n;
+if ((int)info.Reason == (int)ApplicationExitInfoReason.CrashNative)
+{
+string crash = Tombstone.Describe(buffer, read);
+if (crash.Length > 0)
+return Cut(crash, MaxStack);
+}
+else if ((int)info.Reason == (int)ApplicationExitInfoReason.Anr)
+{
+string main = Tombstone.MainThread(Encoding.UTF8.GetString(buffer, 0, read));
+if (main.Length > 0)
+return Cut(main, MaxStack);
+}
 List<string> found = new();
 StringBuilder run = new();
 for (int i = 0; i <= read; i++)
@@ -400,7 +414,8 @@ return string.Empty;
 }
 }
 private static bool IsNoise(Exception ex) => ex is OperationCanceledException or TimeoutException or HttpRequestException
-or IOException or WebException or System.Net.Sockets.SocketException;
+or IOException or WebException or System.Net.Sockets.SocketException
+|| ex is Skua.Flash.Ruffle.FlashCallException && ex.Message.Contains("player not ready", StringComparison.OrdinalIgnoreCase);
 private static string Signature(string kind, Exception? ex, string summary)
 {
 string where = ex?.StackTrace?.Split('\n').FirstOrDefault(l => l.Contains(" at ", StringComparison.Ordinal))?.Trim()

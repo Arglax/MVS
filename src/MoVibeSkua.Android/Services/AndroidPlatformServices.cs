@@ -77,21 +77,58 @@ Toast("Load a script first (Scripts page).");
 public void OpenVSC(string path)
 {
 Context context = global::Android.App.Application.Context;
+if (string.IsNullOrWhiteSpace(path) || !System.IO.File.Exists(path))
+{
+Toast("Load a script first, then tap Edit Script.");
+return;
+}
 try
 {
 AUri uri = AndroidX.Core.Content.FileProvider.GetUriForFile(context, context.PackageName + ".files", new Java.IO.File(path))!;
 Intent intent = new(Intent.ActionView);
 intent.SetDataAndType(uri, "text/plain");
 intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
-Intent chooser = Intent.CreateChooser(intent, "Edit script with")!;
+List<ComponentName> editors = Handlers(context, intent);
+HashSet<string> browsers = Handlers(context, new Intent(Intent.ActionView, AUri.Parse("https://example.com")), all: true)
+.Select(c => c.PackageName).ToHashSet(StringComparer.Ordinal);
+ComponentName[] excluded = editors.Where(c => browsers.Contains(c.PackageName)).ToArray();
+System.Diagnostics.Trace.WriteLine($"[Editor] {editors.Count} apps can open text, {excluded.Length} of them browsers");
+if (editors.Count > 0 && editors.Count == excluded.Length)
+{
+Toast("No text editor on this phone. Install one (a code or text editor from the Play Store) to edit scripts.");
+return;
+}
+Intent chooser = Intent.CreateChooser(intent, "Edit " + System.IO.Path.GetFileName(path) + " with")!;
+if (excluded.Length > 0)
+chooser.PutExtra(Intent.ExtraExcludeComponents, excluded);
 chooser.AddFlags(ActivityFlags.NewTask);
 context.StartActivity(chooser);
 }
 catch (Exception ex)
 {
 System.Diagnostics.Trace.WriteLine($"Open editor failed: {ex.Message}");
-Toast("No app can open the script. Install a code editor (e.g. Acode) to edit scripts.");
+Toast("No app can open the script. Install a text or code editor to edit scripts.");
 }
+}
+private static List<ComponentName> Handlers(Context context, Intent intent, bool all = false)
+{
+List<ComponentName> found = new();
+try
+{
+var matches = context.PackageManager?.QueryIntentActivities(intent, all ? global::Android.Content.PM.PackageInfoFlags.MatchAll : global::Android.Content.PM.PackageInfoFlags.MatchDefaultOnly);
+if (matches is null)
+return found;
+foreach (global::Android.Content.PM.ResolveInfo match in matches)
+{
+if (match.ActivityInfo is { PackageName: { } package, Name: { } name })
+found.Add(new ComponentName(package, name));
+}
+}
+catch (Exception ex)
+{
+System.Diagnostics.Trace.WriteLine($"[Editor] app list: {ex.Message}");
+}
+return found;
 }
 private static void Toast(string message)
 {

@@ -231,7 +231,7 @@
                                             </StackPanel>
                                         </Button>
                                         <Button Classes="skua-button" Width="30" Height="30" MinHeight="30" Padding="0" HorizontalContentAlignment="Center"
-                                                ToolTip.Tip="Pin, download, update, VS Code, delete">
+                                                ToolTip.Tip="Pin, download, update, edit, delete">
                                             <materialIcons:MaterialIcon Kind="DotsHorizontal" Width="16" Height="16" />
                                             <Button.Flyout>
                                                 <MenuFlyout Placement="BottomEdgeAlignedRight">

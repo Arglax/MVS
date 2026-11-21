@@ -39,6 +39,7 @@ CreateChannel();
 StrongReferenceMessenger.Default.Register<ScriptStartedMessage, int>(Recipient, (int)MessageChannels.ScriptStatus, (_, _) => OnStarted());
 StrongReferenceMessenger.Default.Register<ScriptStoppedMessage, int>(Recipient, (int)MessageChannels.ScriptStatus, (_, _) => OnStopped());
 StrongReferenceMessenger.Default.Register<ReloginPausedMessage, int>(Recipient, (int)MessageChannels.GameEvents, (_, m) => OnReloginPaused(m));
+StrongReferenceMessenger.Default.Register<ReloginSkippedMessage, int>(Recipient, (int)MessageChannels.GameEvents, (_, m) => OnReloginSkipped(m));
 }
 private static bool Helper => Bot.AutoEnhance.IsRunning;
 private static void OnStarted()
@@ -84,6 +85,13 @@ string sent = scriptsFault
 : reportId is not null ? "Open MVS to choose whether the report goes to Arglax." : "Problem reports are off: nothing is sent.";
 string text = $"{shortText}\n{reason}\n{sent}";
 Post(ProblemId, title, text, ("Copy details", ActionCopy), (scriptsFault ? "Run again" : "Restart script", ActionRunAgain));
+}
+private static void OnReloginSkipped(ReloginSkippedMessage m)
+{
+if (!m.ScriptWasRunning)
+return;
+Post(ConnectionId, $"📶 {RunInfo.ScriptName ?? "Script"} stopped: connection lost",
+"Auto re-login is off, so MVS did not log back in. Turn on \"Log back in after a disconnect\" on the Accounts page to keep scripts running through disconnects.");
 }
 private static void OnReloginPaused(ReloginPausedMessage m)
 {

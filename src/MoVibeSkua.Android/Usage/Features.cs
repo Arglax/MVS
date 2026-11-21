@@ -96,6 +96,8 @@ public static readonly string[] Uses =
 "accountEdit",
 "accountRemove",
 "loginManual",
+"autoReloginOn",
+"autoReloginOff",
 "loginCancel",
 "logout",
 "armyButler",

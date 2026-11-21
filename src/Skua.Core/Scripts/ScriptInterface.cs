@@ -286,6 +286,9 @@ equippedClass?.ID ?? 0, currentClassPoints, classPointsToRank, Player.CurrentCla
 if (currentInGame)
 {
 wasPlaying = true;
+_playedThisRun = true;
+_reloginNotOursLogged = false;
+_reloginOffLogged = false;
 if (_reloginFailedRounds != 0 || _reloginPausedUntil != 0)
 ResetReloginBackoff();
 Servers.LastIP = Player.ServerIP ?? Servers.LastIP;
@@ -308,9 +311,10 @@ else
 catching = false;
 if (wasPlaying || Manager.ScriptRunning)
 Messenger.Send<PlayerDisconnectedMessage, int>(new(), (int)MessageChannels.GameEvents);
-if ((wasPlaying || Manager.ScriptRunning) && !_waitForLogin && !Servers.IsIntentionalLogout && Options.AutoRelogin && WatchdogEnabled)
+if ((wasPlaying || Manager.ScriptRunning) && !_waitForLogin && !Servers.IsIntentionalLogout && (Options.AutoRelogin || (Manager.ScriptRunning && !ScriptOption.ReloginAllowed)) && WatchdogEnabled)
 {
 wasPlaying = false;
+if (Options.AutoRelogin && ScriptOption.ReloginAllowed)
 Log("Unexpected disconnection detected by watchdog. Triggering auto re-login.");
 BeginLogout();
 }
@@ -321,8 +325,17 @@ wasPlaying = false;
 }
 _limit.LimitedRun("kicked", 1000, () =>
 {
-if (Player.Kicked && !_waitForLogin && !Servers.IsIntentionalLogout && Options.AutoRelogin)
+bool kicked = Player.Kicked;
+if (kicked != _kickSeen)
 {
+_kickSeen = kicked;
+Trace.WriteLine(kicked
+? $"[Login] the game shows its login warning (kicked, or its wait timer after refused logins); played this run: {_playedThisRun}, re-login: {(ScriptOption.ReloginAllowed ? "allowed" : "off")}"
+: "[Login] the game's login warning is gone");
+}
+if (kicked && !_waitForLogin && !Servers.IsIntentionalLogout && Options.AutoRelogin)
+{
+if (ScriptOption.ReloginAllowed)
 Log("Player kick detected. Triggering auto re-login.");
 BeginLogout();
 }
@@ -375,15 +388,50 @@ private (int newTime, string newText) CheckStuckonLoading(int lastConnChange, st
 {
 string connDetail = Flash.IsNull("mcConnDetail.stage") ? "null" : Flash.GetGameObject("mcConnDetail.txtDetail.text", "null")!;
 if (connDetail == "null")
+{
+if (lastConnDetail != "null" && lastConnDetail.Length > 0)
+Trace.WriteLine($"[Login] game message closed after {(Environment.TickCount - lastConnChange) / 1000.0:0.#} s: \"{OneLine(lastConnDetail)}\"");
+_stuckLeftAlone = false;
 return (Environment.TickCount, connDetail);
+}
+if (connDetail != lastConnDetail)
+Trace.WriteLine($"[Login] game says: \"{OneLine(connDetail)}\" (in game: {Player.Playing}, script: {Manager.ScriptRunning}, re-login: {(ScriptOption.ReloginAllowed ? (Options.AutoRelogin ? "on" : "allowed, not armed") : "off")})");
 if (connDetail.Contains("has been lost") && !_waitForLogin)
+{
+if (connDetail != lastConnDetail)
 {
 Messenger.Send<PlayerDisconnectedMessage, int>(new(), (int)MessageChannels.GameEvents);
 if (!Servers.IsIntentionalLogout)
 {
+if (Options.AutoRelogin && ScriptOption.ReloginAllowed)
 Log("Connection lost detected. Triggering auto re-login.");
 BeginLogout();
 }
+}
+}
+else if (connDetail.Contains("Authenticating", StringComparison.OrdinalIgnoreCase) && connDetail == lastConnDetail
+&& !_waitForLogin && !Servers.IsReloginInProgress && Environment.TickCount - lastConnChange >= LoginAnswerMs)
+{
+if (Environment.TickCount64 - _loginRetryAt > 90_000)
+_loginRetries = 0;
+_loginRetryAt = Environment.TickCount64;
+string name = Player.Username ?? string.Empty;
+bool known = !string.IsNullOrWhiteSpace(name) && name != "loginInfo.strUsername" && !string.IsNullOrEmpty(Player.Password);
+Servers.DisconnectForRelogin();
+if (known && _loginRetries < LoginRetryMax)
+{
+_loginRetries++;
+Log($"AQW's login server did not answer in {LoginAnswerMs / 1000} s. Stopped and logging in again ({_loginRetries}/{LoginRetryMax}).");
+Thread.Sleep(800);
+Servers.Login();
+}
+else
+{
+Log(known
+? $"AQW's login server did not answer {LoginRetryMax + 1} times in a row. Stopped: check the connection, then log in again."
+: $"AQW's login server did not answer in {LoginAnswerMs / 1000} s. Stopped: log in again.");
+}
+return (Environment.TickCount, "null");
 }
 else if (Environment.TickCount - lastConnChange >= Options.LoadTimeout && connDetail == lastConnDetail && !_waitForLogin)
 {
@@ -404,8 +452,17 @@ return;
 Map.Join(Map.LastMap);
 });
 }
+else if (!_playedThisRun && !Manager.ScriptRunning)
+{
+if (!_stuckLeftAlone)
+{
+_stuckLeftAlone = true;
+Trace.WriteLine($"[Login] \"{OneLine(connDetail)}\" has not changed for {Options.LoadTimeout / 1000} s; left alone (no login has succeeded in this run yet).");
+}
+}
 else
 {
+Log($"Stuck on \"{OneLine(connDetail)}\" for {Options.LoadTimeout / 1000} s. {(Options.AutoRelogin && ScriptOption.ReloginAllowed ? "Triggering auto re-login." : "Going back to the login screen.")}");
 if (Options.AutoRelogin)
 BeginLogout();
 else
@@ -415,6 +472,11 @@ Servers.Logout();
 if (connDetail == lastConnDetail)
 return (lastConnChange, connDetail);
 return (Environment.TickCount, connDetail);
+}
+private static string OneLine(string text)
+{
+string flat = string.Join(' ', text.Split(new[] { (char)13, (char)10 }, StringSplitOptions.RemoveEmptyEntries)).Trim();
+return flat.Length <= 160 ? flat : flat[..160] + "...";
 }
 private void RunScriptHandlers()
 {
@@ -456,7 +518,7 @@ break;
 case "connectionLost":
 Messenger.Send<PlayerDisconnectedMessage, int>(new(), (int)MessageChannels.GameEvents);
 Log("Flash socket connection lost event received.");
-if (!_waitForLogin && !Servers.IsIntentionalLogout && Options.AutoRelogin && WatchdogEnabled)
+if (!_waitForLogin && !Servers.IsIntentionalLogout && (Options.AutoRelogin || (Manager.ScriptRunning && !ScriptOption.ReloginAllowed)) && WatchdogEnabled)
 {
 BeginLogout();
 }
@@ -753,7 +815,9 @@ CancelRelogin();
 }
 else
 {
-Log($"Server logout command detected (Kicked: {Player.Kicked}). Triggering auto re-login.");
+Log(Options.AutoRelogin && ScriptOption.ReloginAllowed
+? $"Server logout command detected (Kicked: {Player.Kicked}). Triggering auto re-login."
+: $"Server logout command detected (Kicked: {Player.Kicked}).");
 BeginLogout(logoutNotified: true);
 }
 }
@@ -790,9 +854,45 @@ private static readonly int[] ReloginBackoffMinutes = { 2, 5, 15, 30 };
 private int _reloginFailedRounds;
 private long _reloginPausedUntil;
 private bool _reloginPauseLogged;
+private volatile bool _playedThisRun;
+private bool _reloginNotOursLogged;
+private bool _reloginOffLogged;
+private bool _kickSeen;
+private bool _stuckLeftAlone;
+private const int LoginAnswerMs = 20_000;
+private const int LoginRetryMax = 3;
+private int _loginRetries;
+private long _loginRetryAt;
 private async Task OnLogout(bool logoutNotified)
 {
-if (!Options.AutoRelogin || _waitForLogin || Servers.IsIntentionalLogout)
+if (_waitForLogin || Servers.IsIntentionalLogout)
+return;
+if (!_playedThisRun && !Manager.ScriptRunning)
+{
+if (Options.AutoRelogin && !_reloginNotOursLogged)
+{
+_reloginNotOursLogged = true;
+Trace.WriteLine("[Relogin] not started: no login has succeeded in this run yet; the login screen is left to the player.");
+}
+return;
+}
+if (!ScriptOption.ReloginAllowed)
+{
+if (!_reloginOffLogged)
+{
+_reloginOffLogged = true;
+bool running = Manager.ScriptRunning;
+Log(running
+? "Connection lost. Auto re-login is off, so the script was stopped and the login screen is yours."
+: "Connection lost. Auto re-login is off: log in again when you are ready.");
+Trace.WriteLine($"[Relogin] not started: switched off by the player (script running: {running}).");
+Messenger.Send<ReloginSkippedMessage, int>(new(running), (int)MessageChannels.GameEvents);
+if (running)
+await Manager.StopScript();
+}
+return;
+}
+if (!Options.AutoRelogin)
 return;
 if (Environment.TickCount64 < _reloginPausedUntil)
 {
@@ -881,6 +981,13 @@ Log($"Re-login was {(relogged ? "successful" : "cancelled or unsuccessful")}.");
 if (relogged)
 {
 ResetReloginBackoff();
+}
+else if (!reloginCts.IsCancellationRequested && Servers.LastLoginError is { } refused)
+{
+_reloginFailedRounds++;
+_reloginPausedUntil = long.MaxValue;
+_reloginPauseLogged = true;
+Log($"Auto re-login stopped: AQW refused the login ({refused}). Log in yourself to resume.");
 }
 else if (!reloginCts.IsCancellationRequested)
 {

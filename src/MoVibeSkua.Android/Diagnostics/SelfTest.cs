@@ -6,6 +6,9 @@ using MoVibeSkua.Android.Views;
 namespace MoVibeSkua.Android.Diagnostics;
 public static class SelfTest
 {
+[System.Runtime.InteropServices.DllImport("libc")]
+private static extern IntPtr strlen(IntPtr text);
+public static bool NativeTest => ReadProperty("debug.mvs.selftest").StartsWith("native", StringComparison.Ordinal);
 public static void RunIfAsked()
 {
 _ = Task.Run(async () =>
@@ -29,6 +32,9 @@ break;
 case "android":
 new global::Android.OS.Handler(global::Android.OS.Looper.MainLooper!).Post(
 () => throw new InvalidOperationException("MVS self-test: error in an Android callback"));
+break;
+case "native":
+strlen((IntPtr)8);
 break;
 case "engine":
 ProblemReports.SaveEngine("30|400\nRuntimeError: MVS self-test: engine fault\n    at self-test");

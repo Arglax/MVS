@@ -60,6 +60,43 @@ _messenger = messenger;
 _lazyManager = manager;
 Host = host;
 Host.Control.ExternalCall += OnExternalCall;
+Host.Control.Connected += _definitions.Clear;
+}
+private const string HasDefinition = "loaderInfo.applicationDomain.hasDefinition";
+private readonly ConcurrentDictionary<string, string> _definitions = new(StringComparer.Ordinal);
+private string? AskDefinition(string argsJson)
+{
+if (_definitions.TryGetValue(argsJson, out string? known))
+{
+Interlocked.Increment(ref _statHits);
+return known;
+}
+for (int attempt = 0; attempt < 4; attempt++)
+{
+if (attempt > 0)
+{
+if (_lazyManager.Value.ShouldExit)
+break;
+Thread.Sleep(750);
+}
+string? raw = null;
+try
+{
+raw = TimedCall("callGameFunction", argsJson);
+}
+catch (Exception e) when (attempt < 3)
+{
+TraceError("callGameFunction", e);
+}
+if (FlashValues.ResultToString(raw) is "true" or "false")
+{
+_definitions[argsJson] = raw!;
+return raw;
+}
+if (ControlChannel.IsUiThread?.Invoke() == true)
+break;
+}
+return null;
 }
 public RuffleHost Host { get; }
 public event FlashCallHandler? FlashCall;
@@ -111,6 +148,8 @@ try
 string argsJson = FlashValues.SerializeArgs(args);
 string? raw;
 long now = Environment.TickCount64;
+if (function == "callGameFunction" && args.Length == 2 && args[0] is string asked && asked == HasDefinition)
+return FlashValues.ConvertResult(FlashValues.ResultToString(AskDefinition(argsJson)), type);
 if (IsReadOnly(function, args))
 {
 string key = function + "|" + argsJson;

@@ -174,6 +174,24 @@ private bool _remember;
 private string _status = string.Empty;
 [ObservableProperty]
 private bool _isBusy;
+[ObservableProperty]
+private bool _autoRelogin = AutoReloginSaved;
+partial void OnAutoReloginChanged(bool value)
+{
+global::Android.App.Application.Context.GetSharedPreferences(PrefsName, FileCreationMode.Private)
+?.Edit()?.PutBoolean("autoRelogin", value)?.Apply();
+Usage.UsageTracker.Feature(value ? "autoReloginOn" : "autoReloginOff");
+ApplyAutoRelogin(value);
+}
+public static bool AutoReloginSaved =>
+global::Android.App.Application.Context.GetSharedPreferences(PrefsName, FileCreationMode.Private)?.GetBoolean("autoRelogin", false) ?? false;
+public static void ApplyAutoRelogin(bool on)
+{
+Skua.Core.Scripts.ScriptOption.ReloginAllowed = on;
+Skua.Core.Scripts.ScriptOption.KeepLoggedIn = on;
+CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetRequiredService<IScriptOption>().AutoRelogin = on;
+System.Diagnostics.Trace.WriteLine($"[Login] auto re-login is {(on ? "on" : "off")} (Accounts page switch)");
+}
 private async Task LoadServers()
 {
 try
@@ -224,6 +242,7 @@ if (!ok && _bot.Servers.LastLoginError is not null)
 Usage.UsageTracker.Track(Usage.Signal.LOGIN_REFUSED);
 Usage.UsageTracker.Health("loginFails");
 }
+System.Diagnostics.Trace.WriteLine($"[Login] from the Accounts page: {(ok ? "logged in" : cts.IsCancellationRequested ? "cancelled" : _bot.Servers.LastLoginError is { } why ? "refused by AQW: " + why : "did not complete")} (server {server})");
 Status = ok ? "Logged in."
 : cts.IsCancellationRequested ? "Login cancelled."
 : _bot.Servers.LastLoginError is { } refused ? $"AQW refused the login: {refused} Tap the eye to check what was typed."

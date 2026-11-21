@@ -62,6 +62,7 @@ catch { }
 }
 }
 public static bool KeepLoggedIn = false;
+public static volatile bool ReloginAllowed = true;
 private void ScriptStopped(ScriptOption recipient, ScriptStoppedMessage message)
 {
 recipient.AutoRelogin = KeepLoggedIn;
@@ -356,6 +357,8 @@ continue;
 pi.SetValue(this, Convert.ChangeType(_userOptions[pi.Name], pi.PropertyType));
 }
 }
+if (KeepLoggedIn || !ReloginAllowed)
+AutoRelogin = KeepLoggedIn;
 }
 public void ResetToDefault()
 {
@@ -366,6 +369,8 @@ if (pi.Name == nameof(OptionDictionary))
 continue;
 pi.SetValue(this, pi.GetValue(defaults), null);
 }
+if (KeepLoggedIn || !ReloginAllowed)
+AutoRelogin = KeepLoggedIn;
 }
 private void GetOptions()
 {

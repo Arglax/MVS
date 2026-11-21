@@ -177,9 +177,9 @@ ScriptStatus = "Script loaded";
 [RelayCommand]
 private void EditScript(string? path = null)
 {
-if (path is null && string.IsNullOrEmpty(ScriptManager.LoadedScript))
+if (path is null && string.IsNullOrEmpty(ScriptManager.LoadedScript) && !OperatingSystem.IsAndroid())
 return;
-_processService.OpenVSC(path ?? ScriptManager.LoadedScript);
+_processService.OpenVSC(path ?? ScriptManager.LoadedScript ?? string.Empty);
 }
 [RelayCommand]
 private async Task EditScriptConfig()

@@ -29,6 +29,8 @@ foreach (PropertyInfo pi in scriptOpt.GetType().GetProperties())
 {
 if (pi.Name is nameof(IScriptOption.OptionDictionary) or nameof(ObservableRecipient.IsActive) or nameof(IScriptOption.GuildColor) or nameof(IScriptOption.NameColor) or "IsIpcMessageProcessing" or nameof(IScriptOption.ReloginTryDelay) or nameof(IScriptOption.UseFunctionBasedSkills) or nameof(IScriptOption.ReloginServer))
 continue;
+if (OperatingSystem.IsAndroid() && pi.Name == nameof(IScriptOption.AutoRelogin))
+continue;
 if (pi.PropertyType == typeof(bool))
 options.Add(CreateOptionItem<bool>(s, pi.Name, "1", new RelayCommand<bool>(b => pi.SetValue(scriptOpt, b))));
 else if (pi.PropertyType == typeof(string))
@@ -127,7 +129,9 @@ if (!int.TryParse(value, out int result) || result < 0)
 return;
 Ioc.Default.GetRequiredService<ISettingsService>().Set("ReloginTryDelay", result);
 }), s.GetRequiredService<ISettingsService>().Get<int>("ReloginTryDelay")),
-CreateSettingOptionItem<bool>("Relogin Watchdog", "Watch for unexpected disconnections, even with no script running, and relog when Auto Relogin (Game Options) is on. Off leaves relogs to kicks and server logouts", "ReloginWatchdog"),
+CreateSettingOptionItem<bool>("Relogin Watchdog", OperatingSystem.IsAndroid()
+? "Watch for unexpected disconnections, even with no script running, and relog when \"Log back in after a disconnect\" (Accounts) is on. Off leaves relogs to kicks and server logouts"
+: "Watch for unexpected disconnections, even with no script running, and relog when Auto Relogin (Game Options) is on. Off leaves relogs to kicks and server logouts", "ReloginWatchdog"),
 CreateSettingOptionItem<bool>("Enable Performance Guard", "Locks render pacing, monitors device thermals, and prevents LMK memory kills", "EnablePerformanceGuard"),
 new CommandOptionItemViewModel<int>("Target Render FPS", "Target FPS for UI and game render loops (30, 48, 60, or 0 for Unlimited)", "TargetFPS", "FPS", new RelayCommand<string>(value =>
 {
