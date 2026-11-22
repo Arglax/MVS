@@ -1,18 +1,19 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 namespace Skua.Shared.Avalonia.ViewModels.Options;
 public partial class CBOChoiceOptionItemViewModel : DisplayOptionItemViewModel<int>
 {
-public CBOChoiceOptionItemViewModel(string optionTitle, string description, string tag, List<string> options)
+public CBOChoiceOptionItemViewModel(string optionTitle, string description, string tag, IEnumerable<string> options)
 : base(optionTitle, description, tag)
 {
-Options = options;
+Options = new ObservableCollection<string>(options);
 Value = 0;
 }
-public CBOChoiceOptionItemViewModel(string optionTitle, string description, string tag, List<string> options, int value)
+public CBOChoiceOptionItemViewModel(string optionTitle, string description, string tag, IEnumerable<string> options, int value)
 : base(optionTitle, description, tag)
 {
-Options = options;
+Options = new ObservableCollection<string>(options);
 Value = value;
 }
-public List<string> Options { get; }
+public ObservableCollection<string> Options { get; }
 }

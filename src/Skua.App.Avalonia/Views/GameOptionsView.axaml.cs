@@ -2,21 +2,46 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using CommunityToolkit.Mvvm.DependencyInjection;
+using Skua.Core.Interfaces;
+using System;
 using System.Linq;
 namespace Skua.App.Avalonia.Views;
 public partial class GameOptionsView : UserControl
 {
+private const string CompactModeSettingKey = "GameOptionsCompactMode";
+private bool _compactMode;
 public GameOptionsView()
 {
 InitializeComponent();
 Loaded += GameOptionsView_Loaded;
-if (System.OperatingSystem.IsAndroid()
+LayoutUpdated += (_, _) => UpdateColumns();
+try
+{
+_compactMode = Ioc.Default.GetService<ISettingsService>()?.Get(CompactModeSettingKey, false) ?? false;
+}
+catch { }
+if (this.FindControl<ToggleButton>("CompactToggle") is { } compactToggle)
+{
+compactToggle.IsChecked = _compactMode;
+compactToggle.IsCheckedChanged += (_, _) =>
+{
+_compactMode = compactToggle.IsChecked == true;
+try
+{
+Ioc.Default.GetService<ISettingsService>()?.Set(CompactModeSettingKey, _compactMode);
+}
+catch { }
+UpdateColumns();
+};
+}
+if (OperatingSystem.IsAndroid()
 && this.FindControl<ToggleButton>("SearchToggle") is { } toggle
 && this.FindControl<TextBox>("SearchBox") is { } box)
 {
 toggle.IsVisible = true;
 box.IsVisible = false;
-box.Margin = new global::Avalonia.Thickness(0, 0, 52, 0);
 toggle.IsCheckedChanged += (_, _) =>
 {
 box.IsVisible = toggle.IsChecked == true;
@@ -25,6 +50,17 @@ box.Focus();
 else
 box.Text = string.Empty;
 };
+}
+}
+private void UpdateColumns()
+{
+int cols = _compactMode ? 2 : (OperatingSystem.IsAndroid() || (Bounds.Width > 0 && Bounds.Width < 560) ? 1 : 2);
+if (this.FindControl<ItemsControl>("GroupsList") is { } groups)
+groups.Classes.Set("two-col", cols == 2);
+foreach (UniformGrid grid in this.GetVisualDescendants().OfType<UniformGrid>())
+{
+if (grid.Columns != cols)
+grid.Columns = cols;
 }
 }
 private void GameOptionsView_Loaded(object? sender, RoutedEventArgs e)

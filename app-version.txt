@@ -1,7 +1,7 @@
 # MVS version file, read by the app to offer updates and show notices.
-version: 1.0.4
+version: 1.0.5
 release_url: https://github.com/Arglax/MVS/releases/latest
-apk_url: https://github.com/Arglax/MVS/releases/latest/download/MVS_v1-0-4.apk
-notice_id: 2026-11-21-1.0.4
-notice_title: MVS 1.0.4
-notice_text: Fixed the Ruffle game engine crashes during map loads, login-loop hangs, and Edit Script on Android. Heads up: auto re-login is now off by default, so overnight bots will stop on disconnect unless you turn on "Log back in after a disconnect" on the Accounts page.
+apk_url: https://github.com/Arglax/MVS/releases/latest/download/MVS_v1-0-5.apk
+notice_id: 2026-11-22-1.0.5
+notice_title: MVS 1.0.5
+notice_text: Fixed Quest Accept / Decline / Abandon taps, fixed Relogin & Relogin Server picker in Game Options, fixed overlapping chat, switched Game Options to a single-column phone layout, and improved stability.

@@ -232,6 +232,8 @@ private static void SetActive(ShellPage page, bool active)
 {
 if (page.Content is ObservableRecipient recipient)
 recipient.IsActive = active;
+else if (page.Content is BotOptionsViewModel botOptions && botOptions.GameOptions is ObservableRecipient gameRecipient)
+gameRecipient.IsActive = active;
 }
 public bool HandleBack()
 {
@@ -697,12 +699,17 @@ OnPropertyChanged(nameof(IsScriptRunning));
 }
 }
 private bool _wasLoggedIn;
+private int _refreshingStatus;
 private void RefreshStatus()
 {
+if (Interlocked.CompareExchange(ref _refreshingStatus, 1, 0) != 0)
+return;
 _ = Task.Run(() =>
 {
 string text;
 bool loggedIn = false;
+try
+{
 try
 {
 loggedIn = _bot.Player.LoggedIn;
@@ -730,6 +737,11 @@ IsLoggedIn = loggedIn;
 OnPropertyChanged(nameof(ToggleScriptText));
 OnPropertyChanged(nameof(IsScriptRunning));
 });
+}
+finally
+{
+Interlocked.Exchange(ref _refreshingStatus, 0);
+}
 });
 }
 }

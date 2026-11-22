@@ -25,14 +25,20 @@ new CommandOptionItemViewModel<bool>("Upgrade Name Colour", "1", CreateBoolComma
 new CommandOptionItemViewModel<bool>("Staff Name Colour", "1", CreateBoolCommand(b => Ioc.Default.GetRequiredService<IFlashUtil>().SetGameObject("world.myAvatar.pMC.pname.ti.textColor", b ? 0xFECB38 : 0xFFFFFF))),
 new CommandOptionItemViewModel<IRelayCommand>("Reload Map", "4", new RelayCommand(Ioc.Default.GetRequiredService<IScriptMap>().Reload)) { ActionText = "Reload" }
 };
-foreach (PropertyInfo pi in scriptOpt.GetType().GetProperties())
+foreach (PropertyInfo pi in scriptOpt.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
 {
 if (pi.Name is nameof(IScriptOption.OptionDictionary) or nameof(ObservableRecipient.IsActive) or nameof(IScriptOption.GuildColor) or nameof(IScriptOption.NameColor) or "IsIpcMessageProcessing" or nameof(IScriptOption.ReloginTryDelay) or nameof(IScriptOption.UseFunctionBasedSkills) or nameof(IScriptOption.ReloginServer))
 continue;
-if (OperatingSystem.IsAndroid() && pi.Name == nameof(IScriptOption.AutoRelogin))
-continue;
 if (pi.PropertyType == typeof(bool))
-options.Add(CreateOptionItem<bool>(s, pi.Name, "1", new RelayCommand<bool>(b => pi.SetValue(scriptOpt, b))));
+{
+PropertyInfo prop = pi;
+options.Add(CreateOptionItem<bool>(s, prop.Name, "1", new RelayCommand<bool>(b =>
+{
+if (prop.Name == nameof(IScriptOption.AutoRelogin))
+ScriptOption.UserAutoReloginChanged?.Invoke(b);
+prop.SetValue(scriptOpt, b);
+})));
+}
 else if (pi.PropertyType == typeof(string))
 options.Add(CreateOptionItem<string>(s, pi.Name, "2", new RelayCommand<string>(value => pi.SetValue(scriptOpt, value))));
 else if (pi.PropertyType == typeof(int))
@@ -128,6 +134,7 @@ new CommandOptionItemViewModel<int>("Wait Between Relogin Attempts", "How long t
 if (!int.TryParse(value, out int result) || result < 0)
 return;
 Ioc.Default.GetRequiredService<ISettingsService>().Set("ReloginTryDelay", result);
+Ioc.Default.GetService<IScriptOption>()!.ReloginTryDelay = result;
 }), s.GetRequiredService<ISettingsService>().Get<int>("ReloginTryDelay")),
 CreateSettingOptionItem<bool>("Relogin Watchdog", OperatingSystem.IsAndroid()
 ? "Watch for unexpected disconnections, even with no script running, and relog when \"Log back in after a disconnect\" (Accounts) is on. Off leaves relogs to kicks and server logouts"

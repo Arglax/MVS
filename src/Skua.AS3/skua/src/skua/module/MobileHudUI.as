@@ -153,9 +153,17 @@ public class MobileHudUI extends Module {
             }
         } catch (e4:Error) {
         }
-        mhStreamHide(game, ["ui", "mcInterface", "t1"]);
-        mhStreamHide(game, ["ui", "mcInterface", "te"]);
-        mhStreamHide(game, ["ui", "nc"]);
+        var newChat:Boolean = false;
+        try {
+            newChat = Boolean(game.litePreference.data.bChatUI);
+        } catch (eChat:Error) {
+        }
+        if (newChat) {
+            mhStreamHide(game, ["ui", "nc"]);
+        } else {
+            mhStreamHide(game, ["ui", "mcInterface", "t1"]);
+            mhStreamHide(game, ["ui", "mcInterface", "te"]);
+        }
         if (++mhStreamScan >= 30) {
             mhStreamScan = 0;
             try {

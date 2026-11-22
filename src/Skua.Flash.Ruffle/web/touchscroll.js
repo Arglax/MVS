@@ -45,11 +45,15 @@
     }
     function send(c, type, x, y, pointerId, buttons) {
         const Ctor = type.startsWith("pointer") ? PointerEvent : MouseEvent;
-        c.dispatchEvent(new Ctor(type, {
+        const ev = new Ctor(type, {
             bubbles: true, cancelable: true, composed: true,
             clientX: x, clientY: y, pointerId, pointerType: "touch", isPrimary: true,
             button: type === "pointermove" ? -1 : 0, buttons
-        }));
+        });
+        const r = c.getBoundingClientRect();
+        Object.defineProperty(ev, "offsetX", { value: x - r.left - c.clientLeft });
+        Object.defineProperty(ev, "offsetY", { value: y - r.top - c.clientTop });
+        c.dispatchEvent(ev);
     }
     function scrollBy(s, cssDy) {
         s.acc += cssDy / cssPerStage(s.c) / PX_PER_LINE;
@@ -67,12 +71,23 @@
     }
     window.addEventListener("pointerdown", e => {
         stopFling();
-        if (e.pointerType !== "touch" || !e.isPrimary || window.__mvsSwipeScroll === false || !fromGame(e)) {
+        if (e.pointerType !== "touch" || !e.isPrimary || !fromGame(e)) {
             swipe = null;
             return;
         }
         const c = canvas();
-        if (!c) return;
+        if (!c) {
+            swipe = null;
+            return;
+        }
+        if (e.isTrusted) {
+            swipe = null;
+            send(c, "pointermove", e.clientX, e.clientY, e.pointerId, 0);
+        }
+        if (window.__mvsSwipeScroll === false) {
+            swipe = null;
+            return;
+        }
         window.__mvsPressChain = "";
         swipe = { id: e.pointerId, c, x0: e.clientX, y0: e.clientY, lastY: e.clientY, mode: "pending", acc: 0, track: [],
             gameTouch: gameTouchOn() };

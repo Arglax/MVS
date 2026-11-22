@@ -39,9 +39,17 @@ return "The script";
 }
 private static void Handle(Exception error, bool starting)
 {
-if (ScriptVerdicts.Unwrap(error) is Skua.Core.Models.ScriptTrustException)
+Exception unwrapped = ScriptVerdicts.Unwrap(error);
+if (unwrapped is Skua.Core.Models.ScriptTrustException)
 {
 Trace.WriteLine($"[Script] {ScriptName()} not started: unofficial, not allowed by the player");
+return;
+}
+if (starting && string.Equals(unwrapped.Message, "Script already running.", StringComparison.Ordinal))
+{
+Trace.WriteLine($"[Script] {ScriptName()} not started: another script is already running");
+RunNotifier.ShowWhenOnScreen(() => Ioc.Default.GetService<IDialogService>()?.ShowMessageBox(
+"Another script is already running. Stop it first before starting a new one.", "Script already running"));
 return;
 }
 ScriptVerdicts.Verdict verdict;

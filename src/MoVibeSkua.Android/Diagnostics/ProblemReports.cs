@@ -408,8 +408,9 @@ found.Add(text);
 }
 return Cut(string.Join("\n", found.Distinct().Take(40)), MaxStack);
 }
-catch
+catch (Exception ex)
 {
+Trace.WriteLine($"[Report] trace clues: {ex.Message}");
 return string.Empty;
 }
 }

@@ -5,6 +5,42 @@
     let socket = null;
     let player = null;
     let backlog = [];
+    const audioContexts = [];
+    const muteReasons = new Set();
+    let mutedVolume = null;
+    let audioSuspended = false;
+    function syncAudioSuspend(muted) {
+        if (muted) {
+            audioSuspended = true;
+            for (const ctx of audioContexts) {
+                try {
+                    if (ctx.state === "running") ctx.suspend().catch(() => { });
+                } catch (e) { }
+            }
+        } else if (audioSuspended) {
+            audioSuspended = false;
+            for (const ctx of audioContexts) {
+                try {
+                    if (ctx.state === "suspended") ctx.resume().catch(() => { });
+                } catch (e) { }
+            }
+        }
+    }
+    function wrapAudioContext(name) {
+        const Native = window[name];
+        if (typeof Native !== "function") return;
+        const wrapped = new Proxy(Native, {
+            construct(target, args, newTarget) {
+                const ctx = Reflect.construct(target, args, newTarget === wrapped ? target : newTarget);
+                audioContexts.push(ctx);
+                if (muteReasons.size > 0) syncAudioSuspend(true);
+                return ctx;
+            }
+        });
+        window[name] = wrapped;
+    }
+    wrapAudioContext("AudioContext");
+    wrapAudioContext("webkitAudioContext");
     const nativeFetch = window.fetch.bind(window);
     function proxied(url) {
         let u;
@@ -490,6 +526,14 @@
         const shown = on ? real : streamerShown;
         if (shown && get("world.rootClass.ui.mcPortraitTarget.strName.text") === shown.toUpperCase())
             set("world.rootClass.ui.mcPortraitTarget.strName.text", name.toUpperCase());
+        if (!on) {
+            try {
+                const newChat = get("litePreference.data.bChatUI") === true;
+                r.callExternalInterface("setGameObject", "ui.nc.visible", newChat);
+                r.callExternalInterface("setGameObject", "ui.mcInterface.t1.visible", !newChat);
+                r.callExternalInterface("setGameObject", "ui.mcInterface.te.visible", false);
+            } catch (e) { }
+        }
     }
     function setStreamer(msg) {
         const next = msg.on ? { name: String(msg.name), guild: String(msg.guild) } : null;
@@ -511,17 +555,18 @@
             } else {
                 beat();
                 applyStreamer(false);
+                setTimeout(() => { try { if (!streamer) applyStreamer(false); } catch (e) { } }, 80);
             }
         } catch (e) { log("streamer: " + e); }
     }
-    const muteReasons = new Set();
-    let mutedVolume = null;
     function setMuted(reason, on) {
         try {
             if (on) muteReasons.add(reason); else muteReasons.delete(reason);
+            const muted = muteReasons.size > 0;
+            syncAudioSuspend(muted);
             const r = player && player.ruffle();
             if (!r) return;
-            if (muteReasons.size > 0) {
+            if (muted) {
                 if (mutedVolume === null) { mutedVolume = r.volume; r.volume = 0; }
             } else if (mutedVolume !== null) {
                 r.volume = mutedVolume;

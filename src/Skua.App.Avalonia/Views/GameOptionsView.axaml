@@ -9,15 +9,24 @@
              x:DataType="vms:GameOptionsViewModel"
              mc:Ignorable="d" d:DesignHeight="680" d:DesignWidth="640">
   <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
-    <ToggleButton x:Name="SearchToggle" Grid.Row="0" HorizontalAlignment="Right" IsVisible="False" Classes="skua-button"
-                  ToolTip.Tip="Search">
-      <materialIcons:MaterialIcon Kind="Magnify" Width="18" Height="18" />
-    </ToggleButton>
-    <TextBox x:Name="SearchBox" Grid.Row="0" Watermark="Search game options" Text="{Binding SearchText, Mode=TwoWay}">
-      <TextBox.InnerLeftContent>
-        <materialIcons:MaterialIcon Kind="Magnify" Width="15" Height="15" Margin="10,0,0,0" Foreground="{DynamicResource SkuaMutedTextBrush}" />
-      </TextBox.InnerLeftContent>
-    </TextBox>
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+      <TextBox x:Name="SearchBox" Grid.Column="0" Watermark="Search game options" Text="{Binding SearchText, Mode=TwoWay}">
+        <TextBox.InnerLeftContent>
+          <materialIcons:MaterialIcon Kind="Magnify" Width="15" Height="15" Margin="10,0,0,0" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+        </TextBox.InnerLeftContent>
+      </TextBox>
+      <ToggleButton x:Name="CompactToggle" Grid.Column="1" Classes="skua-button"
+                    ToolTip.Tip="Compact Mode (2-column grid)">
+        <StackPanel Orientation="Horizontal" Spacing="5">
+          <materialIcons:MaterialIcon Kind="ViewGridOutline" Width="16" Height="16" />
+          <TextBlock Text="Compact" VerticalAlignment="Center" />
+        </StackPanel>
+      </ToggleButton>
+      <ToggleButton x:Name="SearchToggle" Grid.Column="2" IsVisible="False" Classes="skua-button"
+                    ToolTip.Tip="Search">
+        <materialIcons:MaterialIcon Kind="Magnify" Width="18" Height="18" />
+      </ToggleButton>
+    </Grid>
     <ListBox Grid.Row="1" Classes="chips" ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection, Mode=TwoWay}">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vms:OptionGroupViewModel">
@@ -31,9 +40,9 @@
     </ListBox>
     <Border Grid.Row="2" Classes="option-list" VerticalAlignment="Top">
       <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
-        <ItemsControl ItemsSource="{Binding FilteredGroups}" Margin="0,0,0,-1">
+        <ItemsControl x:Name="GroupsList" ItemsSource="{Binding FilteredGroups}" Margin="0,0,0,-1">
           <ItemsControl.Styles>
-            <Style Selector="ContentPresenter:nth-child(2n+1) > Border.option-row">
+            <Style Selector="ItemsControl.two-col ContentPresenter:nth-child(2n+1) > Border.option-row">
               <Setter Property="BorderThickness" Value="0,0,1,1" />
             </Style>
           </ItemsControl.Styles>

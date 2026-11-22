@@ -193,14 +193,24 @@ string name = loaded ? Path.GetFileNameWithoutExtension(path)! : "No script load
 bool running = scripts.ScriptRunning, paused = running && scripts.ScriptPaused;
 string state = running ? (paused ? "Paused" : "Running") : loaded ? "Ready" : "Idle";
 string where = "";
+if (running)
+{
+if (ControlChannel.IsUiThread?.Invoke() == true)
+{
+where = Diagnostics.RunInfo.MapName ?? "";
+}
+else
+{
 try
 {
 IScriptInterface bot = Ioc.Default.GetRequiredService<IScriptInterface>();
-if (running && bot.Player.LoggedIn)
+if (bot.Player.LoggedIn)
 where = bot.Map.Name;
 }
 catch
 {
+}
+}
 }
 string title = $"{name} · {state}" + (running ? " " + Clock(DateTime.UtcNow - _runStarted) : "") + (BotOnly ? " · bot only" : "");
 if (!running && !scripts.ScriptRunning && _base == default && !loaded)

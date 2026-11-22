@@ -111,7 +111,10 @@ KeepAliveService.Release(context, slot);
 public sealed record ClientStatus(int Slot, bool LoggedIn, string Name, string Map, string Script, bool ScriptRunning);
 private static string StatusDirectory => Path.Combine(global::Android.App.Application.Context.FilesDir!.AbsolutePath, "army");
 private static string StatusPath(int slot) => Path.Combine(StatusDirectory, $"client{slot}.json");
+private static readonly object PublishGate = new();
 public static void Publish(ClientStatus status)
+{
+lock (PublishGate)
 {
 string json = JsonSerializer.Serialize(status);
 if (json == _lastPublished)
@@ -128,6 +131,7 @@ _lastPublished = json;
 catch (Exception ex)
 {
 Trace.WriteLine($"[Army] status write failed: {ex.Message}");
+}
 }
 }
 public static ClientStatus? ReadStatus(int slot)

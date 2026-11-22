@@ -73,6 +73,9 @@ private readonly SemaphoreSlim _loginGate = new(1, 1);
 private int _loginLoops;
 public bool IsReloginInProgress => Volatile.Read(ref _loginLoops) > 0;
 public string? CachedUsername => _loginInfoSetted && !string.IsNullOrWhiteSpace(_username) ? _username : (!string.IsNullOrWhiteSpace(Player.Username) && Player.Username != "loginInfo.strUsername" ? Player.Username : null);
+public bool HasCredentials =>
+(_loginInfoSetted && !string.IsNullOrWhiteSpace(_username) && !string.IsNullOrEmpty(_password))
+|| (!string.IsNullOrWhiteSpace(Player.Username) && Player.Username != "loginInfo.strUsername" && !string.IsNullOrEmpty(Player.Password));
 [ObjectBinding("serialCmd.servers")]
 private List<Server> _serverList = new();
 [ObservableProperty]
@@ -149,7 +152,11 @@ private bool _isConnected;
 public void Login()
 {
 IsIntentionalLogout = false;
-Login(Player.Username, Player.Password);
+string user = _loginInfoSetted && !string.IsNullOrWhiteSpace(_username) ? _username : Player.Username;
+string pass = _loginInfoSetted && !string.IsNullOrEmpty(_password) ? _password : Player.Password;
+if (!string.IsNullOrWhiteSpace(user) && !string.IsNullOrEmpty(pass))
+SetLoginInfo(user, pass);
+Login(user, pass);
 }
 public async ValueTask<List<Server>> GetServers(bool forceUpdate = false)
 {
@@ -173,19 +180,21 @@ return new();
 }
 public void SetLoginInfo(string username, string password)
 {
+if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
+return;
 _username = username;
 _password = password;
 _loginInfoSetted = true;
 }
 public bool Reconnect(string serverName, int loginDelay = 2000)
 {
-Login(Player.Username, Player.Password);
+Login();
 Thread.Sleep(loginDelay);
 return ((IScriptServers)this).Connect(serverName);
 }
 public bool Reconnect(Server server, int loginDelay = 2000)
 {
-Login(Player.Username, Player.Password);
+Login();
 Thread.Sleep(loginDelay);
 return ((IScriptServers)this).Connect(server);
 }
@@ -279,14 +288,22 @@ private static Server? FindByName(List<Server> candidates, string? serverName, b
 {
 if (string.IsNullOrWhiteSpace(serverName))
 return null;
+string target = serverName.Trim();
+if (target.Equals("Galalanoth", StringComparison.OrdinalIgnoreCase))
+target = "Galanoth";
 if (exactMatch)
 {
+Server? exact = candidates.Find(x =>
+string.Equals(x.Name, target, StringComparison.OrdinalIgnoreCase)
+&& (attemptedServers is null || !attemptedServers.Contains(x.Name ?? string.Empty)));
+if (exact is not null)
+return exact;
 return candidates.Find(x =>
-string.Equals(x.Name, serverName, StringComparison.OrdinalIgnoreCase)
+(x.Name ?? string.Empty).StartsWith(target + " (", StringComparison.OrdinalIgnoreCase)
 && (attemptedServers is null || !attemptedServers.Contains(x.Name ?? string.Empty)));
 }
 return candidates.Find(x =>
-(x.Name ?? string.Empty).Contains(serverName, StringComparison.OrdinalIgnoreCase)
+(x.Name ?? string.Empty).Contains(target, StringComparison.OrdinalIgnoreCase)
 && (attemptedServers is null || !attemptedServers.Contains(x.Name ?? string.Empty)));
 }
 private bool ReloginFallbackEnabled => Options is ScriptOption { ReloginFallback: true };

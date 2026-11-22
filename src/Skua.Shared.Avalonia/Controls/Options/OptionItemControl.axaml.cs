@@ -116,16 +116,74 @@ return BuildRow(vm, choices);
 }
 private static Control BuildCBOChoiceItem(CBOChoiceOptionItemViewModel vm)
 {
+bool phone = OperatingSystem.IsAndroid();
 ComboBox comboBox = new()
 {
 ItemsSource = vm.Options,
-Width = 160,
-Height = StandardOptionHeight
+MinWidth = phone ? 168 : 160,
+Width = phone ? 180 : 160,
+Height = phone ? 40 : StandardOptionHeight,
+MaxDropDownHeight = 280
 };
-comboBox[!SelectingItemsControl.SelectedIndexProperty] = new Binding(nameof(DisplayOptionItemViewModelBase.Value))
+bool syncing = false;
+void SyncFromVm()
 {
-Source = vm,
-Mode = BindingMode.TwoWay
+if (syncing)
+return;
+if (vm.Value is int idx && idx >= 0 && idx < vm.Options.Count)
+{
+string target = vm.Options[idx];
+if (!string.Equals(comboBox.SelectedItem as string, target, StringComparison.Ordinal))
+{
+syncing = true;
+try
+{
+comboBox.SelectedItem = target;
+comboBox.SelectedIndex = idx;
+}
+finally
+{
+syncing = false;
+}
+}
+}
+}
+SyncFromVm();
+comboBox.SelectionChanged += (_, _) =>
+{
+if (syncing)
+return;
+int idx = comboBox.SelectedIndex;
+if (idx < 0 && comboBox.SelectedItem is string s)
+idx = vm.Options.IndexOf(s);
+if (idx >= 0 && idx < vm.Options.Count && !Equals(vm.Value, idx))
+{
+syncing = true;
+try
+{
+vm.Value = idx;
+}
+finally
+{
+syncing = false;
+}
+}
+};
+vm.PropertyChanged += (_, e) =>
+{
+if (e.PropertyName == nameof(DisplayOptionItemViewModelBase.Value))
+SyncFromVm();
+};
+vm.Options.CollectionChanged += (_, _) =>
+{
+SyncFromVm();
+global::Avalonia.Threading.Dispatcher.UIThread.Post(SyncFromVm, global::Avalonia.Threading.DispatcherPriority.Loaded);
+};
+comboBox.AttachedToVisualTree += (_, _) => SyncFromVm();
+comboBox.PropertyChanged += (_, e) =>
+{
+if ((e.Property == Visual.IsVisibleProperty || e.Property == Visual.BoundsProperty) && comboBox.SelectedItem is null)
+SyncFromVm();
 };
 return BuildRow(vm, comboBox);
 }

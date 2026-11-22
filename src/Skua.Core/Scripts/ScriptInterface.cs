@@ -415,8 +415,7 @@ else if (connDetail.Contains("Authenticating", StringComparison.OrdinalIgnoreCas
 if (Environment.TickCount64 - _loginRetryAt > 90_000)
 _loginRetries = 0;
 _loginRetryAt = Environment.TickCount64;
-string name = Player.Username ?? string.Empty;
-bool known = !string.IsNullOrWhiteSpace(name) && name != "loginInfo.strUsername" && !string.IsNullOrEmpty(Player.Password);
+bool known = Servers.HasCredentials;
 Servers.DisconnectForRelogin();
 if (known && _loginRetries < LoginRetryMax)
 {
@@ -727,9 +726,16 @@ if (Flash.IsWorldLoaded)
 Stats.GetSpace();
 Options.CustomName = string.Empty;
 Options.CustomGuild = string.Empty;
+if (!Servers.HasCredentials)
+{
+string u = Player.Username;
+string p = Player.Password;
+if (!string.IsNullOrWhiteSpace(u) && u != "loginInfo.strUsername" && !string.IsNullOrEmpty(p))
+Servers.SetLoginInfo(u, p);
+}
 bool fallback = Servers.LastLoginWasFallback;
 Servers.LastLoginWasFallback = false;
-if (ScriptOption.KeepLoggedIn && !fallback)
+if (ScriptOption.KeepLoggedIn && !fallback && !ScriptOption.ReloginServerExplicitlyChosen)
 {
 try
 {

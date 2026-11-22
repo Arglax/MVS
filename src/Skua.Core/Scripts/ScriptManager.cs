@@ -222,7 +222,7 @@ try
 {
 await StopAutoForScriptAsync();
 UnloadPreviousScript();
-FixCoreBotsOptionsCase();
+await Task.Run(FixCoreBotsOptionsCase);
 LastStopWasExternal = false;
 string scriptContent = File.ReadAllText(LoadedScript);
 await EnsureIncludesPresentAsync(scriptContent, LoadedScript);

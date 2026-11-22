@@ -90,6 +90,7 @@ private void OpenVSCode()
 {
 _processService.OpenVSC();
 }
+private bool _scriptActionBusy;
 public async Task StartScriptAsync(string? path = null)
 {
 if (string.IsNullOrWhiteSpace(path))
@@ -97,27 +98,40 @@ return;
 ScriptManager.SetLoadedScript(path);
 if (ScriptManager.ScriptRunning)
 await ScriptManager.StopScript();
+if (ScriptManager.ScriptRunning)
+{
+_dialogService.ShowMessageBox("A script is still starting or stopping. Please wait a moment and try again.", "Script busy");
+return;
+}
 await StartScript();
 }
 [RelayCommand]
 private async Task ToggleScript()
 {
+if (_scriptActionBusy)
+return;
+_scriptActionBusy = true;
 ToggleScriptEnabled = false;
+try
+{
 if (string.IsNullOrWhiteSpace(ScriptManager.LoadedScript))
 {
 _dialogService.ShowMessageBox("No script loaded.", "Scripts");
-ToggleScriptEnabled = true;
 return;
 }
 if (ScriptManager.ScriptRunning)
 {
 await ScriptManager.StopScript();
-ToggleScriptEnabled = true;
-OnPropertyChanged(nameof(ToggleScriptText));
 return;
 }
 await StartScript();
+}
+finally
+{
+_scriptActionBusy = false;
+ToggleScriptEnabled = true;
 OnPropertyChanged(nameof(ToggleScriptText));
+}
 }
 [RelayCommand]
 private async Task TogglePauseScript()
@@ -215,6 +229,9 @@ await recipient.ToggleScript();
 }
 private async void StartScript(ScriptLoaderViewModel recipient, StartScriptMessage message)
 {
+if (_scriptActionBusy)
+return;
+_scriptActionBusy = true;
 ToggleScriptEnabled = false;
 try
 {
@@ -234,6 +251,11 @@ return;
 await ScriptManager.StopScript();
 if (!startNew)
 return;
+if (ScriptManager.ScriptRunning)
+{
+_dialogService.ShowMessageBox("A script is still starting or stopping. Please wait a moment and try again.", "Script busy");
+return;
+}
 LoadedScript = msgPathFileName;
 await Task.Delay(5000);
 }
@@ -249,6 +271,7 @@ _dialogService.ShowMessageBox($"The script couldn't start: {ex.Message}", "Scrip
 }
 finally
 {
+_scriptActionBusy = false;
 ToggleScriptEnabled = true;
 OnPropertyChanged(nameof(ToggleScriptText));
 }

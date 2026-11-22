@@ -6,6 +6,7 @@ public interface IScriptServers : INotifyPropertyChanged
 void SetLoginInfo(string username, string password);
 string LastIP { get; set; }
 string? CachedUsername { get; }
+bool HasCredentials => false;
 string LastName { get; set; }
 bool IsIntentionalLogout { get; set; }
 bool IsReloginInProgress => false;

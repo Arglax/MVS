@@ -63,9 +63,11 @@ catch { }
 }
 public static bool KeepLoggedIn = false;
 public static volatile bool ReloginAllowed = true;
+public static Action<bool>? UserAutoReloginChanged;
+public static volatile bool ReloginServerExplicitlyChosen;
 private void ScriptStopped(ScriptOption recipient, ScriptStoppedMessage message)
 {
-recipient.AutoRelogin = KeepLoggedIn;
+recipient.AutoRelogin = KeepLoggedIn && ReloginAllowed;
 recipient.LagKiller = false;
 recipient.LagKiller = true;
 recipient.LagKiller = false;
@@ -131,8 +133,12 @@ private bool _aggroAllMonsters;
 private bool _infiniteRange;
 [ModuleBinding("DisableFX")]
 private bool _disableFX;
-[ObservableProperty]
 private bool _autoRelogin;
+public bool AutoRelogin
+{
+get => _autoRelogin;
+set => SetProperty(ref _autoRelogin, ReloginAllowed && value, true);
+}
 [ObservableProperty]
 private bool _autoReloginAny;
 [ObservableProperty]
@@ -230,6 +236,7 @@ flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strGold.visible", fa
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strCoins.visible", false);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtGold.visible", false);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtCoins.visible", false);
+flash.Call("setGameObject", "world.rootClass.ui.nc.visible", false);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.t1.visible", false);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.te.visible", false);
 var rawMapName = flash.GetGameObject<string>("world.strMapName") ?? "";
@@ -262,8 +269,20 @@ try
 var flash = _lazyFlash.Value;
 if (flash != null)
 {
-flash.Call("setGameObject", "world.rootClass.ui.mcInterface.t1.visible", true);
-flash.Call("setGameObject", "world.rootClass.ui.mcInterface.te.visible", true);
+void RestoreActiveChat()
+{
+try
+{
+bool newChat = false;
+try { newChat = flash.GetGameObject<bool>("litePreference.data.bChatUI"); } catch { }
+flash.Call("setGameObject", "ui.nc.visible", newChat);
+flash.Call("setGameObject", "ui.mcInterface.t1.visible", !newChat);
+flash.Call("setGameObject", "ui.mcInterface.te.visible", false);
+}
+catch { }
+}
+RestoreActiveChat();
+_ = Task.Delay(120).ContinueWith(_ => RestoreActiveChat());
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.mcGold.visible", true);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teGold.visible", true);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teCoins.visible", true);
@@ -326,13 +345,15 @@ private HuntPriorities _HuntPriority = HuntPriorities.None;
 public void Save()
 {
 StringCollection saveOptions = new();
-foreach (PropertyInfo pi in GetType().GetProperties())
+_userOptions ??= new();
+foreach (PropertyInfo pi in GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
 {
 if (pi.Name == nameof(OptionDictionary))
 continue;
 string key = pi.Name;
 object? value = pi.GetValue(this);
 saveOptions.Add($"{key}={value}");
+_userOptions[key] = value?.ToString() ?? string.Empty;
 }
 _settingsService.Set("UserOptions", saveOptions);
 }
@@ -343,7 +364,8 @@ if (_userOptions is null)
 ResetToDefault();
 return;
 }
-foreach (PropertyInfo pi in GetType().GetProperties())
+string? explicitServer = ReloginServerExplicitlyChosen ? _reloginServer : null;
+foreach (PropertyInfo pi in GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
 {
 if (pi.Name == nameof(OptionDictionary))
 continue;
@@ -357,23 +379,32 @@ continue;
 pi.SetValue(this, Convert.ChangeType(_userOptions[pi.Name], pi.PropertyType));
 }
 }
+int savedDelay = _settingsService.Get<int>("ReloginTryDelay");
+if (savedDelay > 0)
+ReloginTryDelay = savedDelay;
+if (!string.IsNullOrWhiteSpace(explicitServer))
+ReloginServer = explicitServer;
 if (KeepLoggedIn || !ReloginAllowed)
-AutoRelogin = KeepLoggedIn;
+AutoRelogin = KeepLoggedIn && ReloginAllowed;
 }
 public void ResetToDefault()
 {
+ReloginServerExplicitlyChosen = false;
 ScriptOption defaults = new(_lazyFlash);
-foreach (PropertyInfo pi in GetType().GetProperties())
+foreach (PropertyInfo pi in GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
 {
 if (pi.Name == nameof(OptionDictionary))
 continue;
 pi.SetValue(this, pi.GetValue(defaults), null);
 }
 if (KeepLoggedIn || !ReloginAllowed)
-AutoRelogin = KeepLoggedIn;
+AutoRelogin = KeepLoggedIn && ReloginAllowed;
 }
 private void GetOptions()
 {
+int savedDelay = _settingsService.Get<int>("ReloginTryDelay");
+if (savedDelay > 0)
+_reloginTryDelay = savedDelay;
 StringCollection? userOptions = _settingsService.Get<StringCollection>("UserOptions");
 if (userOptions is null)
 return;
@@ -390,7 +421,7 @@ Reset();
 private Dictionary<string, Func<object>> GenerateDictionary()
 {
 Dictionary<string, Func<object>> dict = new();
-foreach (PropertyInfo pi in GetType().GetProperties())
+foreach (PropertyInfo pi in GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
 {
 if (pi.Name == nameof(OptionDictionary))
 continue;

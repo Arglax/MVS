@@ -34,7 +34,36 @@ _server = _prefs?.GetString("server", "Twilly") ?? "Twilly";
 _preferredServer = _server;
 _remember = _prefs?.GetBoolean("remember", true) ?? true;
 LoadAccounts();
+SeedLoginCredentials();
+Skua.Core.Scripts.ScriptOption.UserAutoReloginChanged = SetAutoReloginFromOptions;
+StrongReferenceMessenger.Default.Register<LoginViewModel, LoginMessage, int>(this, (int)MessageChannels.GameEvents, static (r, _) => r.SeedLoginCredentials());
 _ = LoadServers();
+}
+private void SeedLoginCredentials()
+{
+try
+{
+if (_bot.Servers.HasCredentials)
+return;
+string current = _bot.Player.Username;
+SavedAccount? match = null;
+if (!string.IsNullOrWhiteSpace(current) && current != "loginInfo.strUsername")
+match = Accounts.FirstOrDefault(a => a.Username.Equals(current, StringComparison.OrdinalIgnoreCase));
+if (match is null && !string.IsNullOrWhiteSpace(_username))
+match = Accounts.FirstOrDefault(a => a.Username.Equals(_username, StringComparison.OrdinalIgnoreCase));
+if (match is null && Accounts.Count == 1)
+match = Accounts[0];
+if (match is not null && !string.IsNullOrWhiteSpace(match.Username) && !string.IsNullOrEmpty(match.Password))
+_bot.Servers.SetLoginInfo(match.Username, match.Password);
+}
+catch { }
+}
+private void SetAutoReloginFromOptions(bool on)
+{
+if (AutoRelogin != on)
+AutoRelogin = on;
+else
+ApplyAutoRelogin(on);
 }
 public ObservableCollection<string> Servers { get; } = new();
 public ObservableCollection<SavedAccount> Accounts { get; } = new();
@@ -187,6 +216,15 @@ public static bool AutoReloginSaved =>
 global::Android.App.Application.Context.GetSharedPreferences(PrefsName, FileCreationMode.Private)?.GetBoolean("autoRelogin", false) ?? false;
 public static void ApplyAutoRelogin(bool on)
 {
+Skua.Core.Scripts.ScriptOption.UserAutoReloginChanged ??= value =>
+{
+global::Android.App.Application.Context.GetSharedPreferences(PrefsName, FileCreationMode.Private)
+?.Edit()?.PutBoolean("autoRelogin", value)?.Apply();
+Usage.UsageTracker.Feature(value ? "autoReloginOn" : "autoReloginOff");
+ApplyAutoRelogin(value);
+if (CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetService<LoginViewModel>() is { } vm && vm.AutoRelogin != value)
+vm.AutoRelogin = value;
+};
 Skua.Core.Scripts.ScriptOption.ReloginAllowed = on;
 Skua.Core.Scripts.ScriptOption.KeepLoggedIn = on;
 CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetRequiredService<IScriptOption>().AutoRelogin = on;

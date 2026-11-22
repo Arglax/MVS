@@ -160,8 +160,34 @@ catch { }
 return string.Empty;
 }
 }
-[ObjectBinding("loginInfo.strPassword", IsStatic = true)]
-private string _password;
+public string Password
+{
+get
+{
+try
+{
+string? p = Flash.GetGameObjectStatic<string>("loginInfo.strPassword");
+if (!string.IsNullOrEmpty(p) && p != "loginInfo.strPassword" && p != "null")
+return p.Trim('\"');
+}
+catch { }
+try
+{
+string? p = Flash.GetGameObject<string>("loginInfo.strPassword");
+if (!string.IsNullOrEmpty(p) && p != "loginInfo.strPassword" && p != "null")
+return p.Trim('\"');
+}
+catch { }
+try
+{
+string? p = Flash.GetGameObject<string>("mcLogin.tiPass.text");
+if (!string.IsNullOrEmpty(p) && p != "mcLogin.tiPass.text" && p != "null")
+return p.Trim('\"');
+}
+catch { }
+return string.Empty;
+}
+}
 [ObjectBinding("world.myAvatar.objData.guild.Name")]
 private string _guild;
 public bool Kicked

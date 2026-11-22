@@ -373,8 +373,8 @@ public static void OnTrimMemory(TrimMemory level) => Instance.HandleTrimMemory(l
 public void HandleTrimMemory(TrimMemory level)
 {
 Trace.WriteLine($"[PerfGuard] OnTrimMemory received: {level} ({(int)level})");
-bool isPressure = level is TrimMemory.RunningLow or TrimMemory.RunningCritical or TrimMemory.Complete
-|| (int)level >= 10;
+bool isPressure = level is TrimMemory.RunningLow or TrimMemory.RunningCritical
+or TrimMemory.Moderate or TrimMemory.Complete;
 if (isPressure)
 {
 if (Interlocked.CompareExchange(ref _isTrimMemoryRunning, 1, 0) != 0)
@@ -391,7 +391,7 @@ await Dispatcher.UIThread.InvokeAsync(() =>
 shell.PurgeTransientViews();
 }, DispatcherPriority.Background);
 }
-GC.Collect(2, GCCollectionMode.Forced, false, true);
+GC.Collect(2, GCCollectionMode.Optimized, blocking: false);
 }
 catch (Exception ex)
 {

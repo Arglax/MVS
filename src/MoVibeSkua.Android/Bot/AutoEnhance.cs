@@ -87,7 +87,7 @@ if (_running)
 return Name + " is already running.";
 IScriptInterface bot = Ioc.Default.GetRequiredService<IScriptInterface>();
 IScriptManager manager = Ioc.Default.GetRequiredService<IScriptManager>();
-if (!bot.Player.LoggedIn)
+if (!await Task.Run(() => bot.Player.LoggedIn))
 return "Log in first.";
 string? userScript = manager.LoadedScript;
 if (string.Equals(userScript, ScriptPath, StringComparison.OrdinalIgnoreCase) || manager.ScriptRunning && !beforeScript)
