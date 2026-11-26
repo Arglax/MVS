@@ -38,6 +38,7 @@ DispatcherTimer.RunOnce(() => Instance?.UpdateCovered(), TimeSpan.FromMillisecon
 });
 }
 private ShellViewModel? _vm;
+private readonly Action _rebuildGame;
 private TopLevel? _topLevel;
 private Thickness _safeArea;
 private double _keyboardHeight;
@@ -59,7 +60,8 @@ Split.PropertyChanged += (_, e) =>
 if (e.Property == SplitView.IsPaneOpenProperty || e.Property == SplitView.OpenPaneLengthProperty)
 Dispatcher.UIThread.Post(UpdateGameClip, DispatcherPriority.Background);
 };
-GameViewRecovery.RebuildRequested += () => Dispatcher.UIThread.Post(RebuildGameView);
+_rebuildGame = () => Dispatcher.UIThread.Post(RebuildGameView);
+GameViewRecovery.RebuildRequested += _rebuildGame;
 PageGrip.PointerPressed += OnGripPressed;
 PageGrip.PointerMoved += OnGripMoved;
 PageGrip.PointerReleased += (_, e) => EndGripDrag(e.Pointer);
@@ -87,7 +89,7 @@ return;
 _topLevel.BackRequested += OnBackRequested;
 if (_topLevel.InsetsManager is { } insets)
 {
-insets.DisplayEdgeToEdge = true;
+insets.DisplayEdgeToEdgePreference = true;
 insets.IsSystemBarVisible = false;
 insets.SafeAreaChanged += OnSafeAreaChanged;
 _safeArea = insets.SafeAreaPadding;
@@ -233,7 +235,12 @@ Platform.WebSheet.Close();
 return;
 }
 if (DialogLayer.Children.Count > 0)
+{
+Control top = (Control)DialogLayer.Children[^1];
+if (_dismiss.TryGetValue(top, out Action? dismiss))
+dismiss();
 return;
+}
 if (_vm?.HandleBack() == true)
 return;
 MainActivity.Current?.MoveTaskToBack(true);
@@ -259,7 +266,7 @@ UpdateRailScale();
 ApplyInsets();
 UpdateBodyLayout();
 }
-private const int MaxKeptPages = 12;
+private static readonly int MaxKeptPages = Platform.ArmyMemory.MaxKeptPages;
 private readonly Dictionary<object, Control> _pageViews = new(ReferenceEqualityComparer.Instance);
 private readonly List<object> _pageOrder = new();
 private object? _shownContent;
@@ -307,13 +314,36 @@ PageHost.Children.Add(view);
 return view;
 }
 private bool _prepareStarted;
+private DispatcherTimer? _prepareTimer;
+public bool HasDialogs => DialogLayer.Children.Count > 0;
+public void Release()
+{
+GameViewRecovery.RebuildRequested -= _rebuildGame;
+if (_vm is not null)
+_vm.PropertyChanged -= OnVmPropertyChanged;
+_vm = null;
+_prepareTimer?.Stop();
+_keyboardWatch?.Stop();
+_uiDebugTimer?.Stop();
+if (_topLevel is not null)
+_topLevel.LayoutUpdated -= CountLayout;
+_pageViews.Clear();
+_pageOrder.Clear();
+_shownContent = null;
+_dismiss.Clear();
+PageHost.Children.Clear();
+_openPopups.Clear();
+if (ReferenceEquals(Instance, this))
+Instance = null;
+}
 private void StartPreparingPages()
 {
-if (_prepareStarted || _vm is null)
+if (_prepareStarted || _vm is null || !Platform.ArmyMemory.PrepareBotPages)
 return;
 _prepareStarted = true;
 Queue<object>? queue = null;
 DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(700) };
+_prepareTimer = timer;
 int waited = 0;
 timer.Tick += (_, _) =>
 {
@@ -631,8 +661,11 @@ DialogLayer.Children.Add(dialog);
 DialogLayer.IsVisible = true;
 UpdateCovered();
 }
+private readonly Dictionary<Control, Action> _dismiss = new();
+public void SetDismiss(Control dialog, Action close) => _dismiss[dialog] = close;
 public void RemoveDialog(Control dialog)
 {
+_dismiss.Remove(dialog);
 DialogLayer.Children.Remove(dialog);
 DialogLayer.IsVisible = DialogLayer.Children.Count > 0;
 UpdateCovered();

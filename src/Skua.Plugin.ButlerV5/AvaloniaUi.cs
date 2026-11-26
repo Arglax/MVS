@@ -62,5 +62,5 @@ new Setter(ContentPresenter.ForegroundProperty, White),
 new Setter(Visual.OpacityProperty, opacity)
 }
 };
-public static void SetToolTip(Control control, string text) => ToolTip.SetTip(control, text);
+public static void SetToolTip(Control control, string text) => ToolTip.SetTip(control, Skua.Core.Scripts.ScriptOption.Mask(text));
 }

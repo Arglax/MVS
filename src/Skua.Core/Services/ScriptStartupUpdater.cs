@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace Skua.Core.Services;
 public static class ScriptStartupUpdater
 {
-public static async Task DownloadMissingAndOutdatedAsync(IGetScriptsService scripts, IDialogService dialogService)
+public static async Task DownloadMissingAndOutdatedAsync(IGetScriptsService scripts, IDialogService dialogService, bool reportSuccess = false)
 {
 Func<ScriptInfo, bool> needsDownload = s => !s.Downloaded || s.Outdated;
 int expected = scripts.Scripts.Count(needsDownload);
@@ -17,6 +17,13 @@ dialogService.ShowMessageBox(
 $"Downloaded {downloaded} of {expected} scripts.\r\n" +
 "Some scripts could not be downloaded, so scripts that use them may fail to compile.\r\n" +
 "Open Script Repo and press Download All to retry.",
+"Script Update");
+}
+else if (reportSuccess && downloaded > 0)
+{
+dialogService.ShowMessageBox(
+$"Downloaded {downloaded} script(s).\r\n" +
+"You can disable auto script updates in Options > Application.",
 "Script Update");
 }
 }

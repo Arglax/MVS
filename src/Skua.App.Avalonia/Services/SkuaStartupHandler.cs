@@ -2,6 +2,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Messaging;
 using Skua.App.Avalonia.ViewModels;
+using Skua.Shared.Avalonia.ViewModels;
 using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
 using System;
@@ -58,6 +59,18 @@ _bot.Flash.FlashCall += Login;
 }
 if (_options.ExitOnScriptStop)
 {
+if (!string.IsNullOrWhiteSpace(_options.RunPlaylist))
+{
+StrongReferenceMessenger.Default.Register<SkuaStartupHandler, PlaylistFinishedMessage, int>(this, (int)MessageChannels.ScriptStatus, async (r, m) =>
+{
+await Task.Delay(2000);
+try { _bot.Servers.Logout(); } catch { }
+await Task.Delay(1000);
+Environment.Exit(0);
+});
+}
+else
+{
 StrongReferenceMessenger.Default.Register<SkuaStartupHandler, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, async (r, m) =>
 {
 await Task.Delay(2000);
@@ -65,6 +78,7 @@ try { _bot.Servers.Logout(); } catch { }
 await Task.Delay(1000);
 Environment.Exit(0);
 });
+}
 }
 }
 private void LoadGame(string function, params object[] args)
@@ -84,15 +98,42 @@ Task.Factory.StartNew(async () =>
 {
 _bot.Servers.EnsureRelogin(string.IsNullOrWhiteSpace(_options.Server) ? "Twilly" : _options.Server!);
 int wait = 0;
-while (!_bot.Player.Playing && wait < 80)
+while (!_bot.Player.Playing && wait < 240)
 {
 await Task.Delay(250);
 wait++;
 }
 if (!_bot.Player.Playing)
+{
+if (_options.ExitOnScriptStop)
+{
+System.Diagnostics.Trace.WriteLine("[SkuaStartupHandler] Login timed out (could not enter world in 60s). Exiting with code 101.");
+try { _bot.Servers.Logout(); } catch { }
+await Task.Delay(500);
+Environment.Exit(101);
+}
 return;
+}
 await Task.Delay(1000);
-if (!string.IsNullOrWhiteSpace(_options.Script))
+if (!string.IsNullOrWhiteSpace(_options.RunPlaylist))
+{
+await Dispatcher.UIThread.InvokeAsync(() =>
+{
+try
+{
+var scheduler = Ioc.Default.GetRequiredService<ScriptSchedulerViewModel>();
+if (scheduler.LoadPlaylistFromFile(_options.RunPlaylist))
+{
+scheduler.StartQueueDirect();
+}
+}
+catch (Exception ex)
+{
+System.Diagnostics.Trace.WriteLine($"Failed to launch startup playlist: {ex.Message}");
+}
+});
+}
+else if (!string.IsNullOrWhiteSpace(_options.Script))
 {
 await Dispatcher.UIThread.InvokeAsync(async () =>
 {
@@ -132,6 +173,7 @@ _disposed = true;
 _bot.Flash.FlashCall -= LoadGame;
 _bot.Flash.FlashCall -= Login;
 StrongReferenceMessenger.Default.Unregister<ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus);
+StrongReferenceMessenger.Default.Unregister<PlaylistFinishedMessage, int>(this, (int)MessageChannels.ScriptStatus);
 GC.SuppressFinalize(this);
 }
 private sealed class StartupOptions
@@ -140,6 +182,7 @@ public string? Username { get; private set; }
 public string? Password { get; private set; }
 public string? Server { get; private set; } = "Twilly";
 public string? Script { get; private set; }
+public string? RunPlaylist { get; private set; }
 public string? ScriptOptionsStorage { get; private set; }
 public string? LoadScript { get; private set; }
 public string? UseTheme { get; private set; }
@@ -178,6 +221,9 @@ options.Server = NextValue() ?? options.Server;
 break;
 case "--run-script":
 options.Script = NextValue();
+break;
+case "--run-playlist":
+options.RunPlaylist = NextValue();
 break;
 case "--script-options-storage":
 options.ScriptOptionsStorage = NextValue();

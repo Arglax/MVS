@@ -146,11 +146,12 @@ lines.Add($"             (same line {repeats} more time{(repeats == 1 ? "" : "s"
 string text = Redact(string.Join("\n", lines));
 return text.Length > maxChars ? "(older lines cut)\n" + text[^maxChars..] : text;
 }
-public static string PreviousRunTail(DateTime diedAtUtc, int maxChars = 20000)
+public static string PreviousRunTail(DateTime diedAtUtc, int slot = 1, int maxChars = 20000)
 {
 try
 {
 string? file = Directory.GetFiles(Folder, "mvs-*.log")
+.Where(f => LogSlot(Path.GetFileNameWithoutExtension(f)) == slot)
 .Where(f => File.GetLastWriteTimeUtc(f) <= diedAtUtc.AddMinutes(2))
 .OrderByDescending(File.GetLastWriteTimeUtc)
 .FirstOrDefault();
@@ -169,6 +170,14 @@ catch
 {
 return string.Empty;
 }
+}
+private static int LogSlot(string name)
+{
+int at = name.IndexOf("-c", StringComparison.Ordinal);
+if (at < 0)
+return 1;
+string digits = new(name[(at + 2)..].TakeWhile(char.IsDigit).ToArray());
+return int.TryParse(digits, out int slot) ? slot : 1;
 }
 public static string RecentText(int lines = 150) => Redact(RecentRaw(lines));
 public static string RecentRaw(int lines = 150)

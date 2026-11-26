@@ -48,16 +48,19 @@ callback?.Invoke(vm);
 public void ShowMessageBox(string message, string caption)
 {
 System.Diagnostics.Trace.WriteLine($"[Dialog] {caption}: {message}");
+message = Platform.Streamer.Mask(message);
 Modal.Show(close => BuildButtons(caption, message, ["OK"], close));
 }
 public bool? ShowMessageBox(string message, string caption, bool yesAndNo)
 {
+message = Platform.Streamer.Mask(message);
 string[] buttons = yesAndNo ? ["No", "Yes"] : ["OK"];
 string clicked = Modal.Run<string>(close => BuildButtons(caption, message, buttons, close), string.Empty);
 return clicked == "Yes" || clicked == "OK";
 }
 public DialogResult ShowMessageBox(string message, string caption, params string[] buttons)
 {
+message = Platform.Streamer.Mask(message);
 string[] actual = buttons.Length == 0 ? ["OK"] : buttons;
 string clicked = Modal.Run<string>(close => BuildButtons(caption, message, actual, close), string.Empty);
 int index = Array.IndexOf(actual, clicked);

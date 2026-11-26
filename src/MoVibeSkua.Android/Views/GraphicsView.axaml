@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:MoVibeSkua.Android.ViewModels"
              xmlns:v="clr-namespace:MoVibeSkua.Android.Views"
+             xmlns:sharedControls="clr-namespace:Skua.Shared.Avalonia.Controls;assembly=Skua.Shared.Avalonia"
              x:Class="MoVibeSkua.Android.Views.GraphicsView"
              x:DataType="vm:GraphicsViewModel">
     <ThemeVariantScope RequestedThemeVariant="Dark">
@@ -83,6 +84,30 @@
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowHardwareAlerts}" OnContent="" OffContent="" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
+                        <Border Classes="page-band"><TextBlock Text="MEMORY" /></Border>
+                        <Border Classes="page-row">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto" ColumnSpacing="10" RowSpacing="6" sharedControls:ResponsiveGrid.StackBelow="300">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Free RAM / Boost" />
+                                    <TextBlock Classes="page-sub" TextWrapping="Wrap" Text="Closes background apps to free RAM for MVS" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Classes="guide-jump" Padding="14,6" VerticalAlignment="Center" Content="Boost" Command="{Binding BoostRamCommand}" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="4">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Classes="page-name" Text="Auto boost on return" />
+                                    <TextBlock Classes="page-sub" TextWrapping="Wrap" Text="Boosts each time you come back to MVS, at most every 5 minutes." />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoRamBoost}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="page-sub" Foreground="#E0A060" TextWrapping="Wrap" IsVisible="{Binding AutoRamBoost}" Text="On: music, chats and other games in the background close when you return." />
+                            </Grid>
+                        </Border>
+                        <Border Classes="page-row" BorderThickness="0">
+                            <TextBlock Classes="page-sub" Foreground="#EAD9A8" TextWrapping="Wrap" Text="{Binding RamBoostStatus}" />
+                        </Border>
+                        <Border Classes="page-note"><v:InfoText Lead="Note: " Markup="Android limits this. Apps on screen, playing music, system apps, your keyboard and home screen are never closed, and closed apps may restart on their own." /></Border>
                         <Border Classes="page-band"><TextBlock Text="LIGHTER GAME" /></Border>
                         <Border Classes="page-row">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">

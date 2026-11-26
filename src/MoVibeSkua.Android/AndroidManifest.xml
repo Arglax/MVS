@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -17,6 +18,14 @@
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
         </intent>
     </queries>
     <application
@@ -37,6 +46,12 @@
                       android:value="Keeps a game automation session running while the screen is off." />
         </service>
         <meta-data android:name="android.game_mode_config" android:resource="@xml/game_mode_config" />
+        <provider android:name="rikka.shizuku.ShizukuProvider"
+                  android:authorities="com.arglax.movibeskua.shizuku"
+                  android:multiprocess="false"
+                  android:enabled="true"
+                  android:exported="true"
+                  android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
         <provider android:name="androidx.core.content.FileProvider"
                   android:authorities="com.arglax.movibeskua.files"
                   android:exported="false"

@@ -698,39 +698,89 @@ try
 {
 string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_playlist.json");
 var scheduler = Ioc.Default.GetRequiredService<Skua.Shared.Avalonia.ViewModels.ScriptSchedulerViewModel>();
+var resolvedItems = new System.Collections.Generic.List<(string path, string name, Guid id)>();
 if (System.IO.File.Exists(tempFile))
 {
 string content = System.IO.File.ReadAllText(tempFile).Trim();
 if (content.StartsWith("["))
 {
-var data = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<Skua.Shared.Avalonia.ViewModels.ScriptSchedulerViewModel.SavedScriptItem>>(content);
-if (data != null && data.Count > 0)
+try
+{
+using var doc = System.Text.Json.JsonDocument.Parse(content);
+if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+{
+foreach (var el in doc.RootElement.EnumerateArray())
+{
+string rawPath = string.Empty;
+string rawName = string.Empty;
+Guid id = Guid.NewGuid();
+if (el.ValueKind == System.Text.Json.JsonValueKind.String)
+{
+rawPath = el.GetString() ?? string.Empty;
+}
+else if (el.ValueKind == System.Text.Json.JsonValueKind.Object)
+{
+if (el.TryGetProperty("Path", out var pProp) || el.TryGetProperty("path", out pProp))
+rawPath = pProp.GetString() ?? string.Empty;
+if (el.TryGetProperty("Name", out var nProp) || el.TryGetProperty("name", out nProp))
+rawName = nProp.GetString() ?? string.Empty;
+if (el.TryGetProperty("Id", out var idProp) && idProp.TryGetGuid(out var parsedGuid))
+id = parsedGuid;
+}
+if (string.IsNullOrWhiteSpace(rawPath))
+continue;
+string resolved = rawPath;
+if (!System.IO.File.Exists(resolved))
+{
+string candidate = System.IO.Path.Combine(Skua.Core.Models.ClientFileSources.SkuaScriptsDIR, rawPath.Replace('/', System.IO.Path.DirectorySeparatorChar).TrimStart(System.IO.Path.DirectorySeparatorChar));
+if (System.IO.File.Exists(candidate))
+resolved = candidate;
+else
+{
+string fileName = System.IO.Path.GetFileName(rawPath);
+if (!string.IsNullOrEmpty(fileName) && System.IO.Directory.Exists(Skua.Core.Models.ClientFileSources.SkuaScriptsDIR))
+{
+var found = System.IO.Directory.EnumerateFiles(Skua.Core.Models.ClientFileSources.SkuaScriptsDIR, fileName, System.IO.SearchOption.AllDirectories).FirstOrDefault();
+if (!string.IsNullOrEmpty(found) && System.IO.File.Exists(found))
+resolved = found;
+}
+}
+}
+if (System.IO.File.Exists(resolved))
+{
+string displayName = !string.IsNullOrWhiteSpace(rawName) ? rawName : System.IO.Path.GetFileNameWithoutExtension(resolved);
+resolvedItems.Add((resolved, displayName, id));
+}
+}
+}
+}
+catch { }
+}
+}
+if (resolvedItems.Count > 0)
 {
 Dispatcher.UIThread.Post(() =>
+{
+try
 {
 scheduler.ScriptQueue.Clear();
-foreach (var item in data)
+foreach (var (p, n, id) in resolvedItems)
 {
-if (System.IO.File.Exists(item.Path))
-{
-var vm = new Skua.Shared.Avalonia.ViewModels.ScriptItemViewModel(item.Path) { Id = item.Id };
-if (!string.IsNullOrEmpty(item.Name)) vm.Name = item.Name;
+var vm = new Skua.Shared.Avalonia.ViewModels.ScriptItemViewModel(p) { Id = id };
+if (!string.IsNullOrEmpty(n)) vm.Name = n;
 scheduler.ScriptQueue.Add(vm);
 }
-}
-});
-}
-}
-}
-Dispatcher.UIThread.Post(() =>
-{
 if (scheduler.ScriptQueue.Count > 0 && !scheduler.IsRunningQueue)
 {
 if (scheduler.StartQueueCommand.CanExecute(null))
 scheduler.StartQueueCommand.Execute(null);
 }
+}
+catch { }
 });
-} catch { }
+}
+}
+catch { }
 });
 return IntPtr.Zero;
 }

@@ -555,11 +555,18 @@ AutoSave();
 [RelayCommand]
 public async Task StartQueue()
 {
+await StartQueueAsync(false);
+}
+public async Task StartQueueAsync(bool isAutomated = false)
+{
 if (IsRunning)
 return;
 if (Steps.Count == 0 || Steps.All(s => s.Members.Count == 0))
 {
+if (!isAutomated)
 _dialogService.ShowMessageBox("Please add at least one squad with accounts to the queue.", "Empty Queue");
+else
+throw new InvalidOperationException("Please add at least one squad with accounts to the queue.");
 return;
 }
 IsRunning = true;
@@ -567,16 +574,21 @@ _queueCts = new CancellationTokenSource();
 CancellationToken token = _queueCts.Token;
 try
 {
-await RunQueueAsync(token);
+await RunQueueAsync(token, isAutomated);
 }
 catch (OperationCanceledException)
 {
 StatusText = "Army Queue was stopped.";
+if (isAutomated)
+throw;
 }
 catch (Exception ex)
 {
 StatusText = $"Queue Error: {ex.Message}";
+if (!isAutomated)
 _dialogService.ShowMessageBox($"Queue encountered an error: {ex.Message}", "Queue Execution Error");
+if (isAutomated)
+throw;
 }
 finally
 {
@@ -637,7 +649,7 @@ if (stepIndex >= 0 && stepIndex < Steps.Count)
 RemoveStepSpecific(Steps[stepIndex]);
 }
 }
-private async Task RunQueueAsync(CancellationToken token)
+private async Task RunQueueAsync(CancellationToken token, bool isAutomated = false)
 {
 int totalSteps = Steps.Count;
 ActiveStepIndex = 0;
@@ -768,7 +780,10 @@ await Task.Delay(1000, token);
 }
 StatusText = "All Army Queue squads completed successfully!";
 ProgressValue = 100;
+if (!isAutomated)
+{
 _dialogService.ShowMessageBox("All scheduled Army Queue squads have completed their runs!", "Army Queue Finished");
+}
 }
 private Process? LaunchMemberProcess(IAccountItemViewModel acc, string scriptPath, string? optionsStorage = null)
 {

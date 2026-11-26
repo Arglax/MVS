@@ -172,6 +172,8 @@ private static void Post(int id, string title, string text, params (string Label
 {
 try
 {
+title = Platform.Streamer.Mask(title);
+text = Platform.Streamer.Mask(text);
 Intent open = new(Context, typeof(MainActivity));
 open.SetFlags(ActivityFlags.SingleTop | ActivityFlags.ReorderToFront | ActivityFlags.NewTask);
 PendingIntent? tap = PendingIntent.GetActivity(Context, id, open, PendingIntentFlags.Immutable | PendingIntentFlags.UpdateCurrent);

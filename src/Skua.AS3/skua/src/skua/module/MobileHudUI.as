@@ -1,5 +1,6 @@
 package skua.module {
 import flash.display.BitmapData;
+import skua.Main;
 import flash.display.DisplayObject;
 import flash.display.DisplayObjectContainer;
 import flash.display.MovieClip;
@@ -120,6 +121,10 @@ public class MobileHudUI extends Module {
             return;
         }
         mhStreamOn = true;
+        try {
+            mhStreamLogin(game, String(cfg[0]));
+        } catch (eLogin:Error) {
+        }
         var name:String = String(cfg[0]);
         var guild:String = String(cfg[1]);
         var real:String = "";
@@ -153,12 +158,7 @@ public class MobileHudUI extends Module {
             }
         } catch (e4:Error) {
         }
-        var newChat:Boolean = false;
-        try {
-            newChat = Boolean(game.litePreference.data.bChatUI);
-        } catch (eChat:Error) {
-        }
-        if (newChat) {
+        if (mhChatMode(game) == 1) {
             mhStreamHide(game, ["ui", "nc"]);
         } else {
             mhStreamHide(game, ["ui", "mcInterface", "t1"]);
@@ -172,6 +172,41 @@ public class MobileHudUI extends Module {
                     mhStreamHouse(game.ui as DisplayObjectContainer, real.toLowerCase(), 0);
                 }
             } catch (e5:Error) {
+            }
+        }
+    }
+    private static function mhChatMode(game:*):int {
+        try {
+            return int(game.intChatMode);
+        } catch (e:Error) {
+        }
+        return 0;
+    }
+    private static var mhChatStuck:Boolean = true;
+    private static function mhChatRestore(game:*):void {
+        if (game == null || game.ui == null) return;
+        if (mhChatMode(game) == 1) {
+            var sub:int = 0;
+            try {
+                sub = int(game.chatF.iChatMode);
+            } catch (e0:Error) {
+            }
+            try {
+                game.ui.nc.visible = sub != 2;
+            } catch (e1:Error) {
+            }
+        } else {
+            try {
+                game.ui.nc.visible = false;
+            } catch (e2:Error) {
+            }
+            try {
+                if (!game.ui.mcInterface.t1.visible && mhChatStuck) game.ui.mcInterface.t1.visible = true;
+            } catch (e3:Error) {
+            }
+            try {
+                game.ui.mcInterface.te.visible = game.stage != null && game.stage.focus == game.ui.mcInterface.te;
+            } catch (e4:Error) {
             }
         }
     }
@@ -208,8 +243,103 @@ public class MobileHudUI extends Module {
             }
         }
     }
+    private static var mhLoginNi:TextField = null;
+    private static var mhLoginReal:String = null;
+    private static var mhLoginAliasText:String = null;
+    private static var mhLoginBtn:* = null;
+    private static var mhLoginLocked:Array = [];
+    private static function mhLoginLock(tf:TextField, locked:Boolean):void {
+        var t:String = locked ? "dynamic" : "input";
+        if (tf.type != t) tf.type = t;
+        if (tf.selectable == locked) tf.selectable = !locked;
+        if (tf.mouseEnabled == locked) tf.mouseEnabled = !locked;
+        if (tf.tabEnabled == locked) tf.tabEnabled = !locked;
+    }
+    private static function mhStreamLogin(game:*, alias:String):void {
+        var lg:* = null;
+        try {
+            lg = game.mcLogin;
+        } catch (e0:Error) {
+        }
+        var ni:TextField = lg != null && lg.stage != null ? lg.ni as TextField : null;
+        var pi:TextField = lg != null && lg.stage != null ? lg.pi as TextField : null;
+        if (ni == null || ni.parent == null) {
+            mhStreamLoginOff();
+            return;
+        }
+        if (ni != mhLoginNi) {
+            mhStreamLoginOff();
+            mhLoginNi = ni;
+            mhLoginReal = null;
+            mhLoginBtn = lg.btnLogin;
+            if (mhLoginBtn != null) {
+                mhLoginBtn.addEventListener(MouseEvent.CLICK, mhLoginBefore, false, 1000);
+                mhLoginBtn.addEventListener(MouseEvent.CLICK, mhLoginAfter, false, -1000);
+            }
+            ni.stage.addEventListener(Event.EXIT_FRAME, mhLoginExitFrame, false, 0, true);
+        }
+        mhLoginAliasText = alias;
+        mhLoginLock(ni, true);
+        if (pi != null) mhLoginLock(pi, true);
+        mhLoginLocked = [ni, pi];
+        if (ni.stage != null && (ni.stage.focus == ni || ni.stage.focus == pi)) ni.stage.focus = null;
+        if (!ni.visible) ni.visible = true;
+        mhLoginShowAlias();
+    }
+    private static function mhLoginShowAlias():void {
+        var ni:TextField = mhLoginNi;
+        if (ni == null || mhLoginAliasText == null) return;
+        if (ni.text != mhLoginAliasText) {
+            mhLoginReal = ni.text;
+            ni.text = mhLoginAliasText;
+        }
+    }
+    private static function mhLoginExitFrame(e:Event):void {
+        try {
+            mhLoginShowAlias();
+        } catch (err:Error) {
+        }
+    }
+    private static function mhLoginBefore(e:MouseEvent):void {
+        try {
+            if (mhLoginNi != null && mhLoginReal != null && mhLoginNi.text == mhLoginAliasText) mhLoginNi.text = mhLoginReal;
+        } catch (err:Error) {
+        }
+    }
+    private static function mhLoginAfter(e:MouseEvent):void {
+        try {
+            mhLoginShowAlias();
+        } catch (err:Error) {
+        }
+    }
+    private static function mhStreamLoginOff():void {
+        try {
+            if (mhLoginNi != null && mhLoginReal != null && mhLoginNi.text == mhLoginAliasText) mhLoginNi.text = mhLoginReal;
+            if (mhLoginNi != null && mhLoginNi.stage != null) mhLoginNi.stage.removeEventListener(Event.EXIT_FRAME, mhLoginExitFrame);
+            if (mhLoginBtn != null) {
+                mhLoginBtn.removeEventListener(MouseEvent.CLICK, mhLoginBefore);
+                mhLoginBtn.removeEventListener(MouseEvent.CLICK, mhLoginAfter);
+            }
+        } catch (e0:Error) {
+        }
+        mhLoginNi = null;
+        mhLoginReal = null;
+        mhLoginAliasText = null;
+        mhLoginBtn = null;
+        for each (var f:* in mhLoginLocked) {
+            try {
+                if (f != null) mhLoginLock(TextField(f), false);
+            } catch (e:Error) {
+            }
+        }
+        mhLoginLocked = [];
+    }
     private static function mhStreamerOff():void {
         mhStreamOn = false;
+        try {
+            mhStreamLoginOff();
+        } catch (eLoginOff:Error) {
+        }
         for each (var o:* in mhStreamHidden) {
             try {
                 o.visible = true;
@@ -225,6 +355,11 @@ public class MobileHudUI extends Module {
             } catch (e2:Error) {
             }
         }
+        try {
+            mhChatRestore(Main.instance.getGame());
+        } catch (eChat:Error) {
+        }
+        mhChatStuck = false;
         mhStreamTexts = [];
     }
     private static function mvsOpt(game:*, key:String):Boolean {

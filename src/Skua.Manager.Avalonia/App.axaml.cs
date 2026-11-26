@@ -92,9 +92,18 @@ private void OnStartup(object? sender, ControlledApplicationLifetimeStartupEvent
 var mainWindow = new Views.MainWindow();
 if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
 desktop.MainWindow = mainWindow;
+bool startMinimized = e.Args.Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase));
+if (!startMinimized)
+{
 mainWindow.Show();
-if (Ioc.Default.GetRequiredService<ISettingsService>().Get("CheckClientUpdates", true))
+}
+ISettingsService settings = Ioc.Default.GetRequiredService<ISettingsService>();
+if (settings.Get("CheckClientUpdates", true))
 _ = Ioc.Default.GetRequiredService<ClientUpdatesViewModel>().Refresh();
+if (settings.Get("SchedulerAutoStart", true))
+{
+Ioc.Default.GetService<ISchedulerService>()?.Start();
+}
 try
 {
 var remote = Ioc.Default.GetService<IRemoteControlService>();

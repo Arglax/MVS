@@ -27,7 +27,7 @@ private const int MaxStack = 8000;
 private static int MaxLog => Usage.RemoteSettings.Current.FullLog ? 48000 : 16000;
 private static bool Allowed => (AskEnabled || OffSendsMinimal) && Usage.RemoteSettings.Current.ReportsEnabled;
 private static bool OffSendsMinimal => !AskEnabled && Prefs?.GetString("reports.off", null) == "minimal";
-private const int MaxContext = 120;
+private const int MaxContext = 240;
 public const string StateAsk = "ask";
 public const string StateFull = "full";
 public const string StateMinimal = "minimal";
@@ -98,6 +98,7 @@ StrongReferenceMessenger.Default.Register<object, MapChangedMessage, int>(Recipi
 _ = Task.Run(async () =>
 {
 await Task.Delay(TimeSpan.FromSeconds(5));
+RunState.Start(FeatureInUse, () => Usage.UsageTracker.CurrentScreen.ToString());
 if (Platform.Army.IsFirst)
 CollectExitRecords();
 CrashPrompt.WhenReady();
@@ -111,9 +112,12 @@ public static void HookGame(Skua.Core.Interfaces.IFlashUtil flash)
 {
 flash.FlashCall += (function, args) =>
 {
-if (function != "mvsEngineCrash")
+if (function is not ("mvsEngineCrash" or "mvsEngineInit"))
 return;
 string text = args is { Length: > 0 } ? args[0]?.ToString() ?? string.Empty : string.Empty;
+if (function == "mvsEngineInit")
+_ = Task.Run(() => SaveEngineInit(text));
+else
 _ = Task.Run(() => SaveEngine(text));
 };
 }
@@ -143,6 +147,49 @@ catch (Exception ex)
 Trace.WriteLine($"[Report] engine: {ex.Message}");
 }
 }
+private static string? _lastInitSignature;
+private static DateTime _lastInitAt;
+public static void SaveEngineInit(string text)
+{
+try
+{
+text = Regex.Replace(text, @"(http://127\.0\.0\.1:\d+)/[0-9a-f]{24}/", "$1/<token>/");
+string[] lines = text.Split('\n');
+string kind = lines[0].Trim();
+string message = lines.Length > 1 ? lines[1].Trim() : "";
+string details = lines.Length > 2 ? string.Join("\n", lines.Skip(2)).Trim() : "";
+string error = $"Game engine failed to start ({kind}): {message}";
+string signature = Hash("engine-init|" + kind + "|" + Regex.Replace(message, @"0x[0-9a-fA-F]+|\d+", "#"));
+lock (FileGate)
+{
+if (signature == _lastInitSignature && DateTime.UtcNow - _lastInitAt < TimeSpan.FromMinutes(3))
+return;
+_lastInitSignature = signature;
+_lastInitAt = DateTime.UtcNow;
+}
+string memory = "";
+try
+{
+if (Context.GetSystemService(Context.ActivityService) is ActivityManager am)
+{
+ActivityManager.MemoryInfo info = new();
+am.GetMemoryInfo(info);
+memory = $"availMem {info.AvailMem / 1048576} MB of {info.TotalMem / 1048576} MB, lowMemory {info.LowMemory}, " +
+$"threshold {info.Threshold / 1048576} MB, app {Usage.PerfStats.AppMemoryMb(Usage.PerfStats.LastWasmMb)} MB, ";
+}
+}
+catch
+{
+}
+string state = $"\n[EngineInit] {DateTime.UtcNow:o} {memory}army slot {Platform.Army.Slot}";
+SaveRaw("engine", "mvs", error, details, signature, when: DateTime.UtcNow, fatal: false, fps: 0, wasmMb: null,
+feature: "engine start", log: AppLog.ReportLog() + state);
+}
+catch (Exception ex)
+{
+Trace.WriteLine($"[Report] engine init: {ex.Message}");
+}
+}
 public static string? Save(string kind, string category, Exception? ex, string? message, string? script, bool fatal, string? feature = null)
 {
 try
@@ -161,7 +208,8 @@ return null;
 }
 }
 private static string? SaveRaw(string kind, string category, string error, string stack, string signature, DateTime when, bool fatal,
-int? fps, int? wasmMb, string? feature, string? script = null, string? log = null, int? appMb = null, string? page = null)
+int? fps, int? wasmMb, string? feature, string? script = null, string? log = null, int? appMb = null, string? page = null,
+JsonObject? deadRun = null)
 {
 try
 {
@@ -183,11 +231,11 @@ JsonObject report = new()
 ["app"] = Cut(AppLog.AppVersion(), 40),
 ["error"] = Cut(error, MaxError),
 ["stack"] = Cut(stack, MaxStack),
-["context"] = ContextMap(page, feature, script),
+["context"] = ContextMap(page, feature, script, deadRun),
 ["scrubbed"] = false,
 };
 if (local || ask)
-report["full"] = FullPart(fatal, fps, wasmMb, log, appMb);
+report["full"] = FullPart(fatal, fps, wasmMb, log, appMb, deadRun);
 lock (FileGate)
 {
 Directory.CreateDirectory(Folder);
@@ -208,7 +256,7 @@ catch
 return null;
 }
 }
-private static JsonObject ContextMap(string? page, string? feature, string? script)
+private static JsonObject ContextMap(string? page, string? feature, string? script, JsonObject? deadRun = null)
 {
 JsonObject context = new();
 void Put(string key, Func<string?> value)
@@ -223,12 +271,33 @@ catch
 {
 }
 }
+string? Dead(string key) => deadRun?[key] is JsonValue v ? v.ToString() : null;
+if (deadRun is not null)
+{
+Put("page", () => Dead("page") ?? page);
+Put("feature", () => Dead("feature") ?? feature);
+Put("script", () => Dead("script"));
+Put("map", () => Dead("map"));
+Put("client", () => $"army client {Dead("slot") ?? "?"}");
+Put("runFor", () => Dead("runSec") is { } sec ? $"script ran {sec} s" : null);
+Put("died", () => DeadSummary(deadRun));
+Put("process", () => Dead("process"));
+return context;
+}
 Put("page", () => page ?? Usage.UsageTracker.CurrentScreen.ToString());
 Put("feature", () => feature ?? FeatureInUse());
 Put("script", () => script ?? (RunInfo.StartedUtc is not null ? RunInfo.ScriptName : null));
 Put("map", () => RunInfo.MapName);
-if (!Platform.Army.IsFirst)
 Put("client", () => $"army client {Platform.Army.Slot}");
+Put("runFor", () => RunInfo.StartedUtc is not null && RunInfo.RunTime is { } t ? $"script ran {(long)t.TotalSeconds} s" : null);
+Put("thread", () =>
+{
+Thread thread = Thread.CurrentThread;
+bool ui = Avalonia.Threading.Dispatcher.UIThread.CheckAccess();
+return $"{(ui ? "UI thread" : thread.IsThreadPoolThread ? "thread pool" : "own thread")} #{thread.ManagedThreadId} {thread.Name}";
+});
+Put("died", () => $"now: threads {Directory.GetDirectories("/proc/self/task").Length}, managed {GC.GetTotalMemory(false) / 1048576} MB, "
++ $"heat {Services.ThermalMonitor.LastStatus}, gc {GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)}");
 return context;
 }
 private static string FeatureInUse()
@@ -247,7 +316,13 @@ if (Platform.BotControl.InBackground)
 parts.Add("in background");
 return parts.Count == 0 ? "game" : string.Join(", ", parts);
 }
-private static JsonObject FullPart(bool fatal, int? fps, int? wasmMb, string? log, int? appMb)
+private static string DeadSummary(JsonObject state)
+{
+string V(string key) => state[key] is JsonValue v ? v.ToString() : "?";
+return $"last note {V("ts")}: up {(state["uptimeMs"] is JsonValue up ? up.GetValue<long>() / 1000 : -1)} s, app {V("appMb")} MB, wasm {V("wasmMb")} MB, "
++ $"managed {V("managedMb")} MB, free {V("freeMb")} MB, threads {V("threads")}, heat {V("thermal")} ({V("battC")} C), fps {V("fps")}";
+}
+private static JsonObject FullPart(bool fatal, int? fps, int? wasmMb, string? log, int? appMb, JsonObject? deadRun = null)
 {
 JsonObject full = new();
 void Put(string key, Func<JsonNode?> value)
@@ -268,10 +343,26 @@ int wasm = wasmMb ?? Usage.PerfStats.LastWasmMb;
 JsonObject mem = new() { ["appMb"] = appMb ?? Usage.PerfStats.AppMemoryMb(wasm), ["freeMb"] = Usage.PerfStats.DeviceFreeMb() };
 if (wasm > 0)
 mem["wasmMb"] = wasm;
+if (deadRun is not null)
+{
+mem.Remove("freeMb");
+mem.Remove("wasmMb");
+foreach (string key in new[] { "freeMb", "wasmMb", "managedMb", "threads" })
+{
+if (deadRun[key] is JsonValue v && v.TryGetValue(out int n))
+mem[key] = n;
+}
+}
+else
+{
+mem["managedMb"] = (int)(GC.GetTotalMemory(false) / 1048576);
+}
 return mem;
 });
-Put("fps", () => (fps ?? Usage.PerfStats.LastFps) is > 0 and var f ? JsonValue.Create(f) : null);
-Put("temp", () => Services.ThermalMonitor.LastBattery > 0 ? JsonValue.Create(Math.Round(Services.ThermalMonitor.LastBattery, 1)) : null);
+Put("fps", () => deadRun is not null ? (deadRun["fps"] is JsonValue f0 && f0.TryGetValue(out int f1) ? JsonValue.Create(f1) : null)
+: (fps ?? Usage.PerfStats.LastFps) is > 0 and var f ? JsonValue.Create(f) : null);
+Put("temp", () => deadRun is not null ? (deadRun["battC"] is JsonValue t0 && t0.TryGetValue(out double t1) ? JsonValue.Create(t1) : null)
+: Services.ThermalMonitor.LastBattery > 0 ? JsonValue.Create(Math.Round(Services.ThermalMonitor.LastBattery, 1)) : null);
 Put("uptimeMs", () => JsonValue.Create(global::Android.OS.SystemClock.ElapsedRealtime() - global::Android.OS.Process.StartElapsedRealtime));
 Put("settings", Settings);
 Put("log", () => log ?? (fatal ? AppLog.RecentRaw(200) : AppLog.ReportLog()));
@@ -341,13 +432,17 @@ if (what is null)
 continue;
 DateTime died = DateTimeOffset.FromUnixTimeMilliseconds(info.Timestamp).UtcDateTime;
 string clues = TraceClues(info);
-string error = $"MVS closed unexpectedly: {what}" + (string.IsNullOrEmpty(info.Description) ? "" : $" ({info.Description})");
+int slot = RunState.SlotOf(info.ProcessName);
+JsonObject deadRun = RunState.Read(slot, info.Pid) ?? new JsonObject { ["slot"] = slot };
+deadRun["process"] = $"{info.ProcessName} pid {info.Pid}";
+string error = $"MVS closed unexpectedly: {what}" + (string.IsNullOrEmpty(info.Description) ? "" : $" ({info.Description})")
++ ExitState(info);
 if (SelfTest.NativeTest)
 error = "MVS self-test: " + error;
-string firstClue = clues.Split('\n')[0];
-string signature = Hash("crash|" + what + "|" + Regex.Replace(firstClue, @"0x[0-9a-fA-F]+|\d+", "#"));
+string signature = Hash(NativeKey(what, clues));
 SaveRaw("crash", "mvs", error, clues, signature, died, fatal: true, fps: null, wasmMb: null,
-feature: "previous run", log: AppLog.PreviousRunTail(died), appMb: (int)(info.Pss / 1024), page: "previous run");
+feature: "previous run", log: AppLog.PreviousRunTail(died, slot), appMb: (int)(info.Pss / 1024), page: "previous run",
+deadRun: deadRun);
 }
 if (newest != seen)
 Prefs?.Edit()?.PutLong("exit.seen", newest)?.Apply();
@@ -355,6 +450,20 @@ Prefs?.Edit()?.PutLong("exit.seen", newest)?.Apply();
 catch (Exception ex)
 {
 Trace.WriteLine($"[Report] exit records: {ex.Message}");
+}
+}
+private static string ExitState(ApplicationExitInfo info)
+{
+try
+{
+int importance = (int)info.Importance;
+string where = importance <= 100 ? "on screen" : importance <= 230 ? "visible" : "in background";
+long rssMb = info.Rss / 1024, pssMb = info.Pss / 1024;
+return $" [{where}, importance {importance}, pss {pssMb} MB, rss {rssMb} MB]";
+}
+catch
+{
+return "";
 }
 }
 private static readonly string[] ExitReasonNames =
@@ -415,13 +524,32 @@ return string.Empty;
 }
 }
 private static bool IsNoise(Exception ex) => ex is OperationCanceledException or TimeoutException or HttpRequestException
-or IOException or WebException or System.Net.Sockets.SocketException
+or IOException or WebException or System.Net.Sockets.SocketException or System.Net.WebSockets.WebSocketException
 || ex is Skua.Flash.Ruffle.FlashCallException && ex.Message.Contains("player not ready", StringComparison.OrdinalIgnoreCase);
 private static string Signature(string kind, Exception? ex, string summary)
 {
 string where = ex?.StackTrace?.Split('\n').FirstOrDefault(l => l.Contains(" at ", StringComparison.Ordinal))?.Trim()
 ?? Regex.Replace(summary, @"0x[0-9a-fA-F]+|\d+", "#");
 return Hash(kind + "|" + ex?.GetType().FullName + "|" + where);
+}
+internal static string NativeKey(string what, string clues)
+{
+static string Plain(string text)
+{
+text = Regex.Replace(text, @"<anonymous:[0-9a-fA-F]+>", "<anonymous>");
+text = Regex.Replace(text, @" ?\(BuildId: [0-9a-fA-F]+\)", "");
+text = Regex.Replace(text, @"/data/app/\S*?/lib/", "/data/app/.../lib/");
+text = Regex.Replace(text, @"\b[0-9a-fA-F]{5,}\b", "#");
+return Regex.Replace(text, @"0x[0-9a-fA-F]+|\d+", "#").Trim();
+}
+string[] lines = clues.Split('\n');
+if (!lines[0].StartsWith("SIG", StringComparison.Ordinal))
+return "crash|" + Regex.Replace(what, @" \(signal \d+\)", "") + "|" + Plain(lines[0]);
+Match head = Regex.Match(lines[0], @"^(SIG\w+) \((\w+)\).*? in (\S+)");
+string where = head.Success ? $"{head.Groups[1].Value} {head.Groups[2].Value} {head.Groups[3].Value}" : lines[0];
+string overflow = lines.Any(l => l.StartsWith("cause: stack pointer", StringComparison.Ordinal)) ? "stack overflow" : string.Empty;
+string abort = lines.FirstOrDefault(l => l.StartsWith("abort: ", StringComparison.Ordinal)) is { } a ? Plain(a) : string.Empty;
+return "native|" + Plain(where) + "|" + overflow + "|" + abort;
 }
 private static string Hash(string text) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16].ToLowerInvariant();
 private static string Cut(string text, int max) => text.Length > max ? text[..max] : text;

@@ -71,6 +71,17 @@ private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwPr
 [DllImport("user32.dll")]
 private static extern bool IsWindowVisible(IntPtr hWnd);
 [DllImport("user32.dll")]
+private static extern bool IsWindowEnabled(IntPtr hWnd);
+private delegate void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime);
+[DllImport("user32.dll")]
+private static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventProc lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+[DllImport("user32.dll")]
+private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+private WinEventProc? _foregroundHookProc;
+private IntPtr _foregroundHook = IntPtr.Zero;
+[DllImport("user32.dll")]
 public static extern IntPtr BeginDeferWindowPos(int nNumWindows);
 [DllImport("user32.dll")]
 public static extern IntPtr DeferWindowPos(IntPtr hWinPosInfo, IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
@@ -92,6 +103,7 @@ private const uint WM_CLOSE = 0x0010;
 private const int GWL_HWNDPARENT = -8;
 private const int GWL_EXSTYLE = -20;
 private const uint GW_OWNER = 4;
+private const uint GW_HWNDPREV = 3;
 [DllImport("user32.dll", SetLastError = true)]
 public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
 private const int WS_EX_TOOLWINDOW = 0x00000080;
@@ -443,6 +455,9 @@ if (_hostHwnd != IntPtr.Zero)
 HotKeys.HostHwnd = _hostHwnd;
 _subclassProc = HostWindowSubclassProc;
 SetWindowSubclass(_hostHwnd, _subclassProc, 1, IntPtr.Zero);
+_foregroundHookProc = OnForegroundChanged;
+_foregroundHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero,
+_foregroundHookProc, 0, 0, WINEVENT_OUTOFCONTEXT);
 }
 HotKeys.RegisterSkuaPid((uint)Environment.ProcessId);
 HotKeys.GetChildHwndForPid = (pid) =>
@@ -627,12 +642,61 @@ PostMessage(childHwnd, WM_SKUA_GRIDVIEW, new IntPtr(1), IntPtr.Zero);
 if (MenuShowFps.IsChecked)
 PostMessage(childHwnd, WM_SKUA_SET_OPTION, new IntPtr(11), new IntPtr(1));
 DoReposition();
+KeepGameWindowsBelowHostWindows();
 _isSpawning = false;
 ProcessNextSpawn();
+}
+private bool IsHostModalOpen => _hostHwnd != IntPtr.Zero && !IsWindowEnabled(_hostHwnd);
+private void OnForegroundChanged(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime)
+{
+if (_isClosing || hwnd == IntPtr.Zero || !IsHostModalOpen)
+return;
+GetWindowThreadProcessId(hwnd, out uint pid);
+if (_tabs.Values.Any(t => t.Process != null && !t.Process.HasExited && (uint)t.Process.Id == pid))
+KeepGameWindowsBelowHostWindows();
+}
+public void KeepGameWindowsBelowHostWindows()
+{
+if (_hostHwnd == IntPtr.Zero
+|| Application.Current?.ApplicationLifetime is not global::Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+return;
+HashSet<IntPtr> hostWindows = new();
+foreach (Window window in desktop.Windows)
+{
+if (window == this || !window.IsVisible)
+continue;
+IntPtr hwnd = window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+if (hwnd != IntPtr.Zero)
+hostWindows.Add(hwnd);
+}
+if (hostWindows.Count == 0)
+return;
+IntPtr lowest = IntPtr.Zero;
+IntPtr cursor = _hostHwnd;
+for (int i = 0; i < 256 && lowest == IntPtr.Zero; i++)
+{
+cursor = GetWindow(cursor, GW_HWNDPREV);
+if (cursor == IntPtr.Zero)
+break;
+if (hostWindows.Contains(cursor))
+lowest = cursor;
+}
+if (lowest == IntPtr.Zero)
+return;
+foreach (TabInfo info in _tabs.Values)
+{
+if (info.ChildHwnd != IntPtr.Zero)
+SetWindowPos(info.ChildHwnd, lowest, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+}
 }
 private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
 {
 _isClosing = true;
+if (_foregroundHook != IntPtr.Zero)
+{
+UnhookWinEvent(_foregroundHook);
+_foregroundHook = IntPtr.Zero;
+}
 App.DisposeTrayIcon();
 try { _pipeCts.Cancel(); } catch { }
 var tabsToClose = _tabs.Values.ToList();
@@ -2164,6 +2228,8 @@ if (_needsReposition)
 _needsReposition = false;
 Dispatcher.UIThread.Post(DoReposition, DispatcherPriority.Render);
 }
+if (IsHostModalOpen)
+KeepGameWindowsBelowHostWindows();
 }
 }
 #endregion Tab Switching & Positioning
@@ -2954,8 +3020,51 @@ try
 {
 if (!string.IsNullOrWhiteSpace(playlistJson) && playlistJson.Trim().StartsWith("["))
 {
+var normalizedList = new List<ScriptSchedulerViewModel.SavedScriptItem>();
+try
+{
+using var doc = System.Text.Json.JsonDocument.Parse(playlistJson);
+if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+{
+foreach (var el in doc.RootElement.EnumerateArray())
+{
+string sPath = string.Empty;
+string sName = string.Empty;
+if (el.ValueKind == System.Text.Json.JsonValueKind.String)
+{
+sPath = el.GetString() ?? string.Empty;
+}
+else if (el.ValueKind == System.Text.Json.JsonValueKind.Object)
+{
+if (el.TryGetProperty("Path", out var pProp) || el.TryGetProperty("path", out pProp))
+sPath = pProp.GetString() ?? string.Empty;
+if (el.TryGetProperty("Name", out var nProp) || el.TryGetProperty("name", out nProp))
+sName = nProp.GetString() ?? string.Empty;
+}
+if (!string.IsNullOrWhiteSpace(sPath))
+{
+if (string.IsNullOrWhiteSpace(sName))
+sName = System.IO.Path.GetFileName(sPath);
+normalizedList.Add(new ScriptSchedulerViewModel.SavedScriptItem
+{
+Path = sPath,
+Name = sName,
+Id = Guid.NewGuid()
+});
+}
+}
+}
+}
+catch { }
 string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_playlist.json");
+if (normalizedList.Count > 0)
+{
+System.IO.File.WriteAllText(tempFile, System.Text.Json.JsonSerializer.Serialize(normalizedList));
+}
+else
+{
 System.IO.File.WriteAllText(tempFile, playlistJson);
+}
 }
 foreach (var info in _tabs.Values)
 if (info.ChildHwnd != IntPtr.Zero)

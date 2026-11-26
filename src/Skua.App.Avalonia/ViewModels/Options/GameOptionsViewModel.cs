@@ -24,6 +24,7 @@ private static readonly string[] VisualsOptions = { "LagKiller", "HidePlayers", 
 private static readonly string[] CombatOptions = { "AggroMonsters", "AggroAllMonsters", "AttackWithoutTarget", "InfiniteRange", "Magnetise", "HuntDelay", "HuntBuffer", "RestPackets", "SafeTimings" };
 private static readonly string[] DropsOptions = { "AcceptACDrops", "AcceptAllDrops", "RejectAllDrops" };
 private static readonly string[] ReloginOptions = { "AutoRelogin", "AutoReloginAny", "ReloginFallback", "RetryRelogin", "SafeRelogin", "ReloginTries", "LoginTimeout" };
+private static readonly string[] WatchdogOptions = { "EnableScriptWatchdog", "ScriptWatchdogTimeout", "WatchdogAutoRestart", "WatchdogDiscordAlerts" };
 private readonly IScriptServers _servers;
 private readonly IScriptOption _options;
 private readonly CBOChoiceOptionItemViewModel _reloginServerItem;
@@ -157,7 +158,8 @@ new RelayCommand(ReloginNow))
 {
 ActionText = "Relogin"
 });
-HashSet<DisplayOptionItemViewModelBase> used = new(visuals.Concat(combat).Concat(drops).Concat(relogin));
+List<DisplayOptionItemViewModelBase> watchdog = InSection(WatchdogOptions);
+HashSet<DisplayOptionItemViewModelBase> used = new(visuals.Concat(combat).Concat(drops).Concat(relogin).Concat(watchdog));
 List<DisplayOptionItemViewModelBase> gameplay = GameOptions.Where(i => !used.Contains(i))
 .OrderBy(i => i.Content, StringComparer.OrdinalIgnoreCase)
 .ToList();
@@ -167,6 +169,7 @@ new() { Title = "Performance & Visuals", ShortTitle = "Visuals", Icon = "Speedom
 new() { Title = "Combat & Targeting", ShortTitle = "Combat", Icon = "SwordCross", Items = combat },
 new() { Title = "Drops & Looting", ShortTitle = "Drops", Icon = "PackageVariantClosed", Items = drops },
 new() { Title = "Auto-Relogin & Network", ShortTitle = "Relogin", Icon = "ServerNetwork", Items = relogin },
+new() { Title = "Stuck Script Watchdog", ShortTitle = "Watchdog", Icon = "ShieldAlertOutline", Items = watchdog },
 new() { Title = "Gameplay & Character", ShortTitle = "Gameplay", Icon = "AccountCogOutline", Items = gameplay }
 };
 }

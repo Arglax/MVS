@@ -102,6 +102,7 @@ services.AddSingleton<LoginViewModel>();
 Skua.App.Avalonia.AppStartup.Services.AddSkuaMainAppViewModels(services);
 Skua.Core.Scripts.ScriptOption.StreamerName = ShellViewModel.StreamerName;
 Skua.Core.Scripts.ScriptOption.StreamerGuild = $"< {ShellViewModel.StreamerGuild} >";
+Skua.Core.Scripts.ScriptOption.DisplayMask = Platform.Streamer.Mask;
 Ioc.Default.ConfigureServices(services.BuildServiceProvider());
 PluginWindow.PageHost = (MobileWindowService)Ioc.Default.GetRequiredService<IWindowService>();
 Task.Run(() =>

@@ -26,14 +26,19 @@ public class MainActivity : AvaloniaMainActivity<App>
 public static MainActivity? Current { get; private set; }
 protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
 {
-return base.CustomizeAppBuilder(builder)
+builder = base.CustomizeAppBuilder(builder)
 .With(new Avalonia.Media.FontManagerOptions { DefaultFamilyName = "avares://MoVibeSkua/Images/fonts#Roboto" })
 .LogToTrace(Avalonia.Logging.LogEventLevel.Error);
+if (Platform.ArmyMemory.GpuResourceBytes is long gpuBytes)
+builder = builder.With(new SkiaOptions { MaxGpuResourceSizeBytes = gpuBytes });
+return builder;
 }
 protected override void OnCreate(Bundle? savedInstanceState)
 {
 Current = this;
 Skua.Flash.Ruffle.ControlChannel.IsUiThread = () => global::Android.OS.Looper.MyLooper() == global::Android.OS.Looper.MainLooper;
+try
+{
 Platform.Army.SeparateWebViewData();
 if (!System.Diagnostics.Trace.Listeners.OfType<Platform.LogcatTraceListener>().Any())
 System.Diagnostics.Trace.Listeners.Add(new Platform.LogcatTraceListener());
@@ -42,6 +47,11 @@ Diagnostics.AppLog.Start();
 Diagnostics.ProblemReports.Install();
 if (Platform.Army.IsFirst)
 Diagnostics.SelfTest.RunIfAsked();
+}
+catch (Exception ex)
+{
+System.Diagnostics.Trace.WriteLine($"[App] start-up helper failed: {ex}");
+}
 Platform.AndroidBootstrap.Prepare(this);
 base.OnCreate(savedInstanceState);
 HideFromScreenReaders();
@@ -183,13 +193,16 @@ Diagnostics.RunNotifier.OnScreen();
 protected override void OnStop()
 {
 Platform.BotControl.SetInBackground(true);
+Platform.ArmyMemory.OnBackground();
 base.OnStop();
 }
 protected override void OnStart()
 {
 base.OnStart();
+Platform.ArmyMemory.OnForeground();
 Platform.BotControl.SetInBackground(false);
 Platform.Headless.Reassert();
+Services.RamBoost.AutoBoostOnForeground();
 }
 protected override void OnPause()
 {
@@ -200,8 +213,15 @@ protected override void OnDestroy()
 {
 if (Current == this)
 Current = null;
+try
+{
 if (IsFinishing && !Platform.Army.IsFirst)
 Platform.KeepAliveService.Release(this, Platform.Army.Slot);
+}
+catch (Exception ex)
+{
+System.Diagnostics.Trace.WriteLine($"[App] OnDestroy cleanup failed: {ex.Message}");
+}
 base.OnDestroy();
 }
 }

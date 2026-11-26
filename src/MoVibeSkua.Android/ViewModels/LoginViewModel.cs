@@ -37,7 +37,43 @@ LoadAccounts();
 SeedLoginCredentials();
 Skua.Core.Scripts.ScriptOption.UserAutoReloginChanged = SetAutoReloginFromOptions;
 StrongReferenceMessenger.Default.Register<LoginViewModel, LoginMessage, int>(this, (int)MessageChannels.GameEvents, static (r, _) => r.SeedLoginCredentials());
+Streamer.Changed += _ => Dispatcher.UIThread.Post(OnStreamerChanged);
 _ = LoadServers();
+}
+public bool IsStreamer => Streamer.IsOn;
+public bool CanEditAccounts => !Streamer.IsOn;
+public string StreamerNote => Streamer.EditBlockedNote;
+private void OnStreamerChanged()
+{
+if (Streamer.IsOn)
+{
+IsEditing = false;
+EditingName = null;
+Username = string.Empty;
+Password = string.Empty;
+Status = string.Empty;
+}
+RefillAccounts(Accounts.ToList());
+OnPropertyChanged(nameof(IsStreamer));
+OnPropertyChanged(nameof(CanEditAccounts));
+OnPropertyChanged(nameof(ShowForm));
+}
+private bool BlockedByStreamer()
+{
+if (!Streamer.IsOn)
+return false;
+Status = Streamer.EditBlockedNote;
+return true;
+}
+private void RefillAccounts(List<SavedAccount> accounts)
+{
+Accounts.Clear();
+for (int i = 0; i < accounts.Count; i++)
+{
+accounts[i].Index = i;
+Accounts.Add(accounts[i]);
+}
+OnPropertyChanged(nameof(HasAccounts));
 }
 private void SeedLoginCredentials()
 {
@@ -76,11 +112,13 @@ private bool _isEditing;
 private string? _editingName;
 public SavedAccount? EditingAccount => EditingName is null ? null
 : Accounts.FirstOrDefault(a => a.Username.Equals(EditingName, StringComparison.OrdinalIgnoreCase));
-public bool ShowForm => IsEditing || !HasAccounts;
+public bool ShowForm => !Streamer.IsOn && (IsEditing || !HasAccounts);
 public string FormTitle => EditingName is null ? "Add account" : $"Edit {EditingName}";
 [RelayCommand]
 private void AddAccount()
 {
+if (BlockedByStreamer())
+return;
 Usage.UsageTracker.Feature("accountAdd");
 EditingName = null;
 Username = string.Empty;
@@ -99,6 +137,8 @@ Status = string.Empty;
 [RelayCommand]
 private async Task SaveAndLogin()
 {
+if (BlockedByStreamer())
+return;
 if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
 {
 Status = "Enter a username and password.";
@@ -122,14 +162,13 @@ SavedAccounts.Save(accounts);
 }
 if (oldPass is not null)
 _prefs?.Edit()?.Remove("pass")?.Apply();
-Accounts.Clear();
-foreach (SavedAccount a in accounts)
-Accounts.Add(a);
-OnPropertyChanged(nameof(HasAccounts));
+RefillAccounts(accounts);
 }
 [RelayCommand]
 private void SaveAccount()
 {
+if (BlockedByStreamer())
+return;
 if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
 {
 Status = "Enter a username and password to save the account.";
@@ -139,14 +178,15 @@ StoreAccount(Username.Trim(), Password, Server);
 Usage.UsageTracker.Track(Usage.Signal.ACCOUNT_SAVED);
 IsEditing = false;
 EditingName = null;
-Status = $"Saved {Username.Trim()} on this phone.";
+Status = Streamer.Mask($"Saved {Username.Trim()} on this phone.");
 }
 private void StoreAccount(string user, string pass, string server)
 {
 SavedAccount? existing = Accounts.FirstOrDefault(a => a.Username.Equals(user, StringComparison.OrdinalIgnoreCase));
 SavedAccount account = new() { Username = user, Password = pass, Server = string.IsNullOrWhiteSpace(server) ? "Twilly" : server };
+account.Index = existing is not null ? Accounts.IndexOf(existing) : Accounts.Count;
 if (existing is not null)
-Accounts[Accounts.IndexOf(existing)] = account;
+Accounts[account.Index] = account;
 else
 Accounts.Add(account);
 SavedAccounts.Save(Accounts);
@@ -167,6 +207,8 @@ await Login();
 [RelayCommand]
 private void EditAccount(SavedAccount? account)
 {
+if (BlockedByStreamer())
+return;
 Usage.UsageTracker.Feature("accountEdit");
 if (account is null)
 return;
@@ -180,6 +222,8 @@ Status = string.Empty;
 [RelayCommand]
 private void RemoveAccount(SavedAccount? account)
 {
+if (BlockedByStreamer())
+return;
 Usage.UsageTracker.Feature("accountRemove");
 if (account is null)
 return;
@@ -189,7 +233,7 @@ OnPropertyChanged(nameof(HasAccounts));
 OnPropertyChanged(nameof(ShowForm));
 IsEditing = false;
 EditingName = null;
-Status = $"Removed {account.Username} from this phone.";
+Status = Streamer.Mask($"Removed {account.Username} from this phone.");
 }
 [ObservableProperty]
 private string _username;

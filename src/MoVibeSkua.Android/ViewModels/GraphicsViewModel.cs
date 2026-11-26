@@ -61,10 +61,11 @@ EnablePerformanceGuard = guard.EnablePerformanceGuard;
 TargetFps = Find(TargetFpsOptions, guard.TargetFps.ToString(CultureInfo.InvariantCulture));
 AutoThrottleOnOverheat = guard.AutoThrottleOnOverheat;
 ShowHardwareAlerts = guard.ShowHardwareAlerts;
+AutoRamBoost = Services.RamBoost.AutoBoost;
 _loading = false;
 RefreshTelemetry();
 _telemetryTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-_telemetryTimer.Tick += (_, _) => RefreshTelemetry();
+_telemetryTimer.Tick += (_, _) => { if (!Platform.BotControl.InBackground) RefreshTelemetry(); };
 _telemetryTimer.Start();
 _loading = false;
 }
@@ -140,6 +141,61 @@ partial void OnShowHardwareAlertsChanged(bool value)
 if (_loading) return;
 Usage.UsageTracker.Toggle("gfxHardwareAlerts", value);
 Services.PerformanceGuard.Instance.ShowHardwareAlerts = value;
+}
+[ObservableProperty]
+private bool _autoRamBoost;
+[ObservableProperty]
+private string _ramBoostStatus = "Not run yet.";
+[ObservableProperty]
+[NotifyCanExecuteChangedFor(nameof(BoostRamCommand))]
+private bool _ramBoosting;
+partial void OnAutoRamBoostChanged(bool value)
+{
+if (_loading) return;
+Usage.UsageTracker.Toggle("gfxAutoRamBoost", value);
+if (value && !_prefs.GetBoolean("ram.autoWarned", false))
+{
+Views.RamBoostDialogs.ShowAutoBoostWarning(keep => Dispatcher.UIThread.Post(() =>
+{
+_prefs.Edit()!.PutBoolean("ram.autoWarned", keep)!.Apply();
+Services.RamBoost.AutoBoost = keep;
+_loading = true;
+AutoRamBoost = keep;
+_loading = false;
+}));
+return;
+}
+Services.RamBoost.AutoBoost = value;
+}
+private bool CanBoostRam() => !RamBoosting;
+[RelayCommand(CanExecute = nameof(CanBoostRam))]
+private async System.Threading.Tasks.Task BoostRam()
+{
+Usage.UsageTracker.Feature("gfxRamBoost");
+RamBoosting = true;
+RamBoostStatus = "Freeing RAM...";
+try
+{
+Services.RamBoostResult? result = await Services.RamBoost.BoostAsync();
+if (result is { } r)
+{
+long gained = Math.Max(0, r.AvailAfterMb - r.AvailBeforeMb);
+RamBoostStatus = string.Create(CultureInfo.InvariantCulture,
+$"{r.AvailBeforeMb} MB free before → {r.AvailAfterMb} MB after (+{gained} MB) of {r.TotalMb} MB · {r.AppsTrimmed} apps {(r.UsedShizuku ? "force stopped" : "asked to close")}{(r.LowMemory ? " · phone still low on memory" : "")}");
+Views.RamBoostDialogs.ShowResult(r, RamBoostStatus);
+}
+else
+RamBoostStatus = "A boost is already running.";
+}
+catch (Exception e)
+{
+RamBoostStatus = "Boost failed: " + e.Message;
+}
+finally
+{
+RamBoosting = false;
+RefreshTelemetry();
+}
 }
 public void RefreshTelemetry()
 {

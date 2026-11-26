@@ -80,8 +80,8 @@ public bool HasBadge => Badge > 0;
 public sealed partial class ShellViewModel : ObservableObject
 {
 private const string PrefsName = "movibeskua.shell";
-public const string StreamerName = "MVS User";
-public const string StreamerGuild = "MVS";
+public const string StreamerName = Platform.Streamer.BaseAlias;
+public const string StreamerGuild = Platform.Streamer.Guild;
 private readonly IScriptInterface _bot;
 private readonly DispatcherTimer _statusTimer;
 private readonly ISharedPreferences? _prefs;
@@ -93,7 +93,9 @@ public ShellViewModel(MainMenuViewModel mainMenu, IScriptInterface bot, ScriptLo
 MainMenu = mainMenu;
 _bot = bot;
 _prefs = global::Android.App.Application.Context.GetSharedPreferences(PrefsName, FileCreationMode.Private);
-_isStreamerMode = _prefs?.GetBoolean("streamerMode", false) ?? false;
+Platform.Streamer.Init(_prefs?.GetBoolean("streamerMode", false) ?? false);
+_isStreamerMode = Platform.Streamer.IsOn;
+Platform.Streamer.Changed += on => Dispatcher.UIThread.Post(() => IsStreamerMode = on);
 _isBotMode = _prefs?.GetBoolean("botMode", false) ?? false;
 _sidebarOn = _prefs?.GetBoolean("sidebar", true) ?? true;
 HookScriptStreamerMode();
@@ -375,6 +377,7 @@ partial void OnIsStreamerModeChanged(bool value)
 if (_scriptOption is not null && _scriptOption.StreamerMode != value)
 _scriptOption.StreamerMode = value;
 _prefs?.Edit()?.PutBoolean("streamerMode", value)?.Apply();
+Platform.Streamer.Set(value);
 UsageTracker.Track(value ? Signal.STREAMER_ON : Signal.STREAMER_OFF);
 UpdateStreamerAction();
 PostStreamerMode();
@@ -383,7 +386,7 @@ RefreshStatus();
 private void PostStreamerMode()
 {
 string json = IsStreamerMode
-? $"{{\"t\":\"streamer\",\"on\":true,\"name\":\"{StreamerName}\",\"guild\":\"{StreamerGuild}\"}}"
+? $"{{\"t\":\"streamer\",\"on\":true,\"name\":\"{Platform.Streamer.OwnAlias}\",\"guild\":\"{StreamerGuild}\"}}"
 : "{\"t\":\"streamer\",\"on\":false}";
 Ioc.Default.GetService<Skua.Flash.Ruffle.RuffleFlashUtil>()?.PostCommand(json);
 }
@@ -700,6 +703,10 @@ OnPropertyChanged(nameof(IsScriptRunning));
 }
 private bool _wasLoggedIn;
 private int _refreshingStatus;
+private string? _lastPostedStatus;
+private bool _lastPostedLoggedIn;
+private bool _lastPostedRunning;
+private string? _lastPostedToggle;
 private void RefreshStatus()
 {
 if (Interlocked.CompareExchange(ref _refreshingStatus, 1, 0) != 0)
@@ -716,13 +723,16 @@ loggedIn = _bot.Player.LoggedIn;
 if (loggedIn && !_wasLoggedIn)
 _ = Task.Delay(4000).ContinueWith(_ => Ioc.Default.GetService<GraphicsViewModel>()?.Apply());
 _wasLoggedIn = loggedIn;
-string name = loggedIn ? (IsStreamerMode ? StreamerName : _bot.Player.Username) : string.Empty;
+Platform.Streamer.Refresh();
+string realName = loggedIn ? _bot.Player.Username : string.Empty;
+if (loggedIn)
+Platform.Streamer.RememberOwn(realName, _bot.Player.Guild);
+string name = loggedIn && IsStreamerMode ? Platform.Streamer.HeaderAlias : realName;
 string map = loggedIn ? _bot.Map.Name : string.Empty;
 text = loggedIn ? $"{name} · {map} · {_bot.Player.Cell}" : "Not logged in";
-if (IsStreamerMode)
 PostStreamerMode();
 IScriptManager scripts = Ioc.Default.GetRequiredService<IScriptManager>();
-Army.Publish(new Army.ClientStatus(Army.Slot, loggedIn, name, map, scripts.LoadedScript ?? string.Empty, scripts.ScriptRunning));
+Army.Publish(new Army.ClientStatus(Army.Slot, loggedIn, realName, map, scripts.LoadedScript ?? string.Empty, scripts.ScriptRunning));
 }
 catch
 {
@@ -730,6 +740,21 @@ text = "Loading...";
 }
 if (!Army.IsFirst)
 text = $"{Army.Label(Army.Slot)} · {text}";
+bool running = false;
+try { running = Ioc.Default.GetRequiredService<IScriptManager>().ScriptRunning; } catch { }
+string toggle = ScriptLoader.ToggleScriptText;
+if (Platform.BotControl.InBackground)
+{
+_lastPostedStatus = null;
+return;
+}
+if (text == _lastPostedStatus && loggedIn == _lastPostedLoggedIn
+&& running == _lastPostedRunning && toggle == _lastPostedToggle)
+return;
+_lastPostedStatus = text;
+_lastPostedLoggedIn = loggedIn;
+_lastPostedRunning = running;
+_lastPostedToggle = toggle;
 Dispatcher.UIThread.Post(() =>
 {
 StatusText = text;

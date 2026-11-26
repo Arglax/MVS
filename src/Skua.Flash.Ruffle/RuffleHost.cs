@@ -377,28 +377,29 @@ return;
 Trace.WriteLine($"[RuffleHost] socket bridged to {host}:{port}");
 NetworkStream net = tcp.GetStream();
 using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+CancellationToken token = linked.Token;
 Task upstream = Task.Run(async () =>
 {
 byte[] buffer = new byte[32 * 1024];
 while (socket.State == WebSocketState.Open)
 {
-WebSocketReceiveResult result = await socket.ReceiveAsync(buffer, linked.Token).ConfigureAwait(false);
+WebSocketReceiveResult result = await socket.ReceiveAsync(buffer, token).ConfigureAwait(false);
 if (result.MessageType == WebSocketMessageType.Close)
 break;
-await net.WriteAsync(buffer.AsMemory(0, result.Count), linked.Token).ConfigureAwait(false);
+await net.WriteAsync(buffer.AsMemory(0, result.Count), token).ConfigureAwait(false);
 NetMeter.Socket(result.Count);
 }
-}, linked.Token);
+}, token);
 Task downstream = Task.Run(async () =>
 {
 byte[] buffer = new byte[32 * 1024];
 int read;
-while ((read = await net.ReadAsync(buffer, linked.Token).ConfigureAwait(false)) > 0)
+while ((read = await net.ReadAsync(buffer, token).ConfigureAwait(false)) > 0)
 {
 NetMeter.Socket(read);
-await socket.SendAsync(buffer.AsMemory(0, read), WebSocketMessageType.Binary, true, linked.Token).ConfigureAwait(false);
+await socket.SendAsync(buffer.AsMemory(0, read), WebSocketMessageType.Binary, true, token).ConfigureAwait(false);
 }
-}, linked.Token);
+}, token);
 try
 {
 await Task.WhenAny(upstream, downstream).ConfigureAwait(false);
@@ -412,6 +413,10 @@ if (socket.State == WebSocketState.Open)
 await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "closed", CancellationToken.None).ConfigureAwait(false);
 }
 catch { }
+try { tcp.Close(); } catch { }
+try { await Task.WhenAll(upstream, downstream).WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false); } catch { }
+_ = upstream.Exception;
+_ = downstream.Exception;
 Trace.WriteLine($"[RuffleHost] socket {host}:{port} closed");
 }
 }

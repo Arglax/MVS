@@ -153,6 +153,14 @@ private bool _disableCollisions;
 private bool _disableDeathAds;
 [ObservableProperty]
 private bool _headlessMode;
+[ObservableProperty]
+private bool _enableScriptWatchdog = true;
+[ObservableProperty]
+private int _scriptWatchdogTimeout = 300;
+[ObservableProperty]
+private bool _watchdogAutoRestart = true;
+[ObservableProperty]
+private bool _watchdogDiscordAlerts = true;
 partial void OnHeadlessModeChanged(bool value)
 {
 try
@@ -189,6 +197,8 @@ Save();
 }
 public static string StreamerName = "VibeSkuaUser";
 public static string StreamerGuild = "Hidden";
+public static Func<string, string>? DisplayMask;
+public static string Mask(string? text) => text is null ? string.Empty : DisplayMask?.Invoke(text) ?? text;
 public static bool NameTagsDrawnByHost = false;
 private string _originalName = string.Empty;
 private string _originalGuild = string.Empty;
@@ -236,9 +246,12 @@ flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strGold.visible", fa
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strCoins.visible", false);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtGold.visible", false);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtCoins.visible", false);
+if (!NameTagsDrawnByHost)
+{
 flash.Call("setGameObject", "world.rootClass.ui.nc.visible", false);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.t1.visible", false);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.te.visible", false);
+}
 var rawMapName = flash.GetGameObject<string>("world.strMapName") ?? "";
 if (!string.IsNullOrEmpty(rawMapName) && rawMapName != "null")
 {
@@ -273,16 +286,28 @@ void RestoreActiveChat()
 {
 try
 {
-bool newChat = false;
-try { newChat = flash.GetGameObject<bool>("litePreference.data.bChatUI"); } catch { }
-flash.Call("setGameObject", "ui.nc.visible", newChat);
-flash.Call("setGameObject", "ui.mcInterface.t1.visible", !newChat);
+int mode = 0;
+try { mode = flash.GetGameObject<int>("intChatMode"); } catch { }
+if (mode == 1)
+{
+int sub = 0;
+try { sub = flash.GetGameObject<int>("chatF.iChatMode"); } catch { }
+flash.Call("setGameObject", "ui.nc.visible", sub != 2);
+}
+else
+{
+flash.Call("setGameObject", "ui.nc.visible", false);
+flash.Call("setGameObject", "ui.mcInterface.t1.visible", true);
 flash.Call("setGameObject", "ui.mcInterface.te.visible", false);
+}
 }
 catch { }
 }
+if (!NameTagsDrawnByHost)
+{
 RestoreActiveChat();
 _ = Task.Delay(120).ContinueWith(_ => RestoreActiveChat());
+}
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.mcGold.visible", true);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teGold.visible", true);
 flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teCoins.visible", true);

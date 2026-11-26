@@ -165,7 +165,7 @@ return;
 }
 Detail = !status.LoggedIn
 ? "Not logged in"
-: $"{(masked ? ShellViewModel.StreamerName : status.Name)} · {status.Map}";
+: $"{(masked ? Platform.Streamer.Alias(Slot) : status.Name)} · {status.Map}";
 string script = string.IsNullOrEmpty(status.Script) ? string.Empty : Path.GetFileNameWithoutExtension(status.Script);
 ScriptText = status.ScriptRunning ? $"Running {script}" : script.Length > 0 ? $"Loaded {script}" : "No script loaded";
 IsScriptRunning = status.ScriptRunning;

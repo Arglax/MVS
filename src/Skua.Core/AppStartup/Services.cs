@@ -25,6 +25,7 @@ services.AddSingleton<ICustomScriptService, CustomScriptService>();
 services.AddSingleton<IScriptPathResolver, ScriptPathResolver>();
 services.AddSingleton<ILoadoutService, LoadoutService>();
 services.AddSingleton<IDiscordWebhookService, DiscordWebhookService>();
+services.AddSingleton<IScriptWatchdogService, ScriptWatchdogService>();
 return services;
 }
 private static bool IsManagedAssembly(string filePath)

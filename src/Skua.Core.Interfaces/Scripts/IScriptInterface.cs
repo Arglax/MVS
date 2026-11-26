@@ -17,6 +17,7 @@ IScriptBotStats Stats { get; }
 IScriptSelfAuras Self { get; }
 IScriptTargetAuras Target { get; }
 IAuraMonitorService AuraMonitor { get; }
+IScriptWatchdogService Watchdog { get; }
 IUltraBossHelper UltraBossHelper { get; }
 IScriptCombat Combat { get; }
 IScriptKill Kill { get; }

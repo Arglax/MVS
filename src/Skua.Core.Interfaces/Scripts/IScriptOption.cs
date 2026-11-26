@@ -50,6 +50,10 @@ int JoinMapTries { get; set; }
 int QuestAcceptAndCompleteTries { get; set; }
 int ReloginTries { get; set; }
 HuntPriorities HuntPriority { get; set; }
+bool EnableScriptWatchdog { get; set; }
+int ScriptWatchdogTimeout { get; set; }
+bool WatchdogAutoRestart { get; set; }
+bool WatchdogDiscordAlerts { get; set; }
 void Reset();
 void ResetToDefault();
 void Save();

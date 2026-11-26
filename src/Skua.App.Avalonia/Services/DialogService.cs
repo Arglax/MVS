@@ -832,6 +832,8 @@ dialog.Opened -= OnOpened;
 private static void FocusDefaultDialogAction(Window dialog, Control? initialFocus)
 {
 dialog.Activate();
+if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: Views.TabbedHostWindow host })
+host.KeepGameWindowsBelowHostWindows();
 dialog.Focus();
 if (initialFocus?.Focus() == true)
 {

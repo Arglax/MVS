@@ -54,9 +54,10 @@ new Option<bool>("copyWalk", "Copy master's walking",
 false),
 new Option<ButlerClassType>("classType", "Class type",
 "Which CoreBots class this butler equips when it starts following:\n" +
-"Farm / Solo / Dodge / Boss as selected in CoreBots options, or None to\n" +
-"keep current gear. Saved per account - after login, each account shows\n" +
-"and keeps its own choice. Default: None.",
+"Farm / Solo / Dodge / Boss as selected in CoreBots options, with that\n" +
+"slot's skill set mode, or None to keep current gear. A mode the class\n" +
+"doesn't have falls back to one it does. Saved per account - after login,\n" +
+"each account shows and keeps its own choice. Default: None.",
 ButlerClassType.None),
 new Option<ParkSpot>("parkLocation", "Park location",
 "Where a butler goes when it's released or its master goes offline. Default: House.\n" +
@@ -197,6 +198,7 @@ _container = manager?.GetContainer(this);
 _scriptManager = provider.GetService(typeof(IScriptManager)) as IScriptManager;
 _dispatcher = provider.GetService(typeof(IDispatcherService)) as IDispatcherService;
 _dialogs = provider.GetService(typeof(IDialogService)) as IDialogService;
+IAdvancedSkillContainer? skillSets = provider.GetService(typeof(IAdvancedSkillContainer)) as IAdvancedSkillContainer;
 DebugLog.EnabledProvider = () => GetOption("debugLogs", false);
 DebugLog.AutoSaveProvider = () => GetOption("autoSaveLog", false);
 DebugLog.Log("Plugin", $"Load: pid={Environment.ProcessId} container={( _container != null ? "ok" : "NULL")} bot={( _bot != null ? "ok" : "NULL")}");
@@ -229,6 +231,7 @@ ScriptRunning = () => IsScriptRunning,
 AntiLagSummoned = () => GetOption("antiLagSummoned", true),
 AntiLagFollowing = () => GetOption("antiLagFollowing", false),
 ScriptSuspendNotice = ShowSuspendNotice,
+SkillSets = () => skillSets?.LoadedSkills,
 }, Log);
 try
 {
@@ -382,8 +385,7 @@ account.Following.Equals(me, StringComparison.OrdinalIgnoreCase) &&
 !CurrentFollowers.Any(f => f.Equals(account.Username, StringComparison.OrdinalIgnoreCase));
 bool isMaster(SyncData account) => account.Followers.Count > 0;
 bool differentServer(SyncData account) =>
-!string.IsNullOrEmpty(account.Server) && !string.IsNullOrEmpty(myServer) &&
-!account.Server.Equals(myServer, StringComparison.OrdinalIgnoreCase);
+!GameServer.Same(account.Server, myServer, account.Username);
 bool followingAnother(SyncData account) =>
 !string.IsNullOrEmpty(account.Following) &&
 !account.Following.Equals(me, StringComparison.OrdinalIgnoreCase);
@@ -505,8 +507,7 @@ d.Following.Equals(me, StringComparison.OrdinalIgnoreCase) &&
 !CurrentFollowers.Any(f => f.Equals(d.Username, StringComparison.OrdinalIgnoreCase));
 bool IsMaster(SyncData d) => d.Followers.Count > 0;
 bool DifferentServer(SyncData d) =>
-!string.IsNullOrEmpty(d.Server) && !string.IsNullOrEmpty(myServer) &&
-!d.Server.Equals(myServer, StringComparison.OrdinalIgnoreCase);
+!GameServer.Same(d.Server, myServer, d.Username);
 bool FollowingAnother(SyncData d) =>
 !string.IsNullOrEmpty(d.Following) && !d.Following.Equals(me, StringComparison.OrdinalIgnoreCase);
 bool Unavailable(SyncData d) =>
@@ -619,7 +620,7 @@ Log($"Could not open window: {ex.Message}",
 }
 }
 public void ShowMessage(string message) =>
-_dialogs?.ShowMessageBox(message, "Butler");
+_dialogs?.ShowMessageBox(Skua.Core.Scripts.ScriptOption.Mask(message), "Butler");
 public bool ConfirmDisablePlugin() =>
 _dialogs?.ShowMessageBox(
 "Turning this off stops Butler from working on ALL accounts - no following, " +
@@ -852,8 +853,7 @@ if (IsScriptRunning)
 DebugLog.Log("OrderWatcher", $"ignored send-all goto from {command.Username}: a script is running");
 continue;
 }
-if (!string.IsNullOrEmpty(command.Server) && !string.IsNullOrEmpty(myServer) &&
-!command.Server.Equals(myServer, StringComparison.OrdinalIgnoreCase))
+if (!GameServer.Same(command.Server, myServer, "command"))
 {
 DebugLog.Log("OrderWatcher", $"ignored send-all goto from {command.Username}: server mismatch");
 continue;

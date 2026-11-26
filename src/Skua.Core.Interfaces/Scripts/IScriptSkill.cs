@@ -33,5 +33,7 @@ Start();
 }
 void Start();
 void Stop();
+void StartSkills() => Start();
+void StopSkills() => Stop();
 void UseBaseProvider();
 }

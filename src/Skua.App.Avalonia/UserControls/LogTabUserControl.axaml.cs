@@ -75,15 +75,24 @@ Dispatcher.UIThread.Post(() => ScrollToEnd(vm), DispatcherPriority.Loaded);
 }
 private void Logs_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
 {
-Dispatcher.UIThread.Post(UpdateCountText, DispatcherPriority.Background);
+if (!_countPosted)
+{
+_countPosted = true;
+Dispatcher.UIThread.Post(() => { _countPosted = false; UpdateCountText(); }, DispatcherPriority.Background);
+}
 LogTabViewModel? vm = _subscribed;
 if (vm is null || vm.Logs.Count == 0)
 return;
 if (LogsListBox.Scroll is ScrollViewer scroll && scroll.Extent.Height > scroll.Viewport.Height
 && scroll.Offset.Y + scroll.Viewport.Height < scroll.Extent.Height - 24)
 return;
-Dispatcher.UIThread.Post(() => ScrollToEnd(vm));
+if (_scrollPosted)
+return;
+_scrollPosted = true;
+Dispatcher.UIThread.Post(() => { _scrollPosted = false; ScrollToEnd(vm); });
 }
+private bool _countPosted;
+private bool _scrollPosted;
 private void ScrollToEnd(LogTabViewModel vm)
 {
 if (ReferenceEquals(_subscribed, vm) && vm.Logs.Count > 0)

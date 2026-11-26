@@ -1,7 +1,7 @@
 # MVS version file, read by the app to offer updates and show notices.
-version: 1.0.5
+version: 1.0.6
 release_url: https://github.com/Arglax/MVS/releases/latest
-apk_url: https://github.com/Arglax/MVS/releases/latest/download/MVS_v1-0-5.apk
-notice_id: 2026-11-22-1.0.5
-notice_title: MVS 1.0.5
-notice_text: Fixed Quest Accept / Decline / Abandon taps, fixed Relogin & Relogin Server picker in Game Options, fixed overlapping chat, switched Game Options to a single-column phone layout, and improved stability.
+apk_url: https://github.com/Arglax/MVS/releases/latest/download/MVS_v1-0-6.apk
+notice_id: 2026-11-26-1.0.6
+notice_title: MVS 1.0.6
+notice_text: New Free up RAM / Boost (with optional Shizuku), Streamer Mode that hides every name, far less memory per Army client, fixed Army Butler, fewer crashes, and the Streamer chat fix.

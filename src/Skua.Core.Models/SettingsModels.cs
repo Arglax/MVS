@@ -383,6 +383,10 @@ public string LastServer { get; set; } = string.Empty;
 public string AutoStartScriptPath { get; set; } = string.Empty;
 [JsonPropertyName("AutoStartScript")]
 public bool AutoStartScript { get; set; } = false;
+[JsonPropertyName("SchedulerAutoStart")]
+public bool SchedulerAutoStart { get; set; } = true;
+[JsonPropertyName("SchedulerUse24HourTime")]
+public bool SchedulerUse24HourTime { get; set; } = false;
 [JsonExtensionData]
 public Dictionary<string, object>? ExtensionData { get; set; }
 public void InitializeDefaults()

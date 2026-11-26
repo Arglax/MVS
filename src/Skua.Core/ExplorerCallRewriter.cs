@@ -15,12 +15,28 @@ private bool _changed;
 public override SyntaxNode? VisitInvocationExpression(InvocationExpressionSyntax node)
 {
 node = (InvocationExpressionSyntax)base.VisitInvocationExpression(node)!;
+if (IsButlerLogPath(node))
+{
+_changed = true;
+return node.WithExpression(SyntaxFactory.ParseExpression("global::ScriptShell.ButlerFile").WithTriviaFrom(node.Expression));
+}
 if (node.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Start" } access
 || node.ArgumentList.Arguments.Count == 0
 || !IsProcessType(access.Expression))
 return node;
 _changed = true;
 return node.WithExpression(SyntaxFactory.ParseExpression("global::ScriptShell.Start").WithTriviaFrom(node.Expression));
+}
+private static bool IsButlerLogPath(InvocationExpressionSyntax node)
+{
+if (node.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Combine" } access
+|| node.ArgumentList.Arguments.Count < 2)
+return false;
+string type = access.Expression.ToString().Replace(" ", string.Empty);
+if (type is not ("Path" or "IO.Path" or "System.IO.Path" or "global::System.IO.Path"))
+return false;
+string first = node.ArgumentList.Arguments[0].Expression.ToString().Replace(" ", string.Empty);
+return first is "ButlerLogDir" or "CoreBots.ButlerLogDir";
 }
 private static bool IsProcessType(ExpressionSyntax expression)
 {

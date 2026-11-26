@@ -76,17 +76,58 @@
         cinematic: "contrast(1.15) saturate(1.12) brightness(0.95)",
         bright: "brightness(1.12) contrast(1.05)"
     };
-    function setPixelRatio(ratio, scale) {
-        let want = ratio > 0 ? ratio : ratio < 0 ? Math.min(nativeDpr * -ratio, 3.5) : nativeDpr;
-        if (ratio === 0 && screenRatioCap > 0) want = Math.min(want, screenRatioCap);
-        if (scale && scale < 1) want = Math.max(1, want * scale);
-        want = Math.round(want * 100) / 100;
+    const lowMemRatio = 0.25;
+    let lowMem = false;
+    function forcePixelRatio(want) {
         if (window.devicePixelRatio === want) return;
         Object.defineProperty(window, "devicePixelRatio", { get: () => want, configurable: true });
         const el = player;
         if (!el) return;
         el.style.width = "calc(100% - 1px)";
         requestAnimationFrame(() => requestAnimationFrame(() => { el.style.width = ""; }));
+    }
+    let gpuCanvas = null;
+    function shrinkCanvas(on) {
+        try {
+            const canvas = player && player.shadowRoot ? player.shadowRoot.querySelector("canvas") : null;
+            if (!canvas) return;
+            if (on) {
+                if (!gpuCanvas) gpuCanvas = [canvas.width, canvas.height];
+                canvas.width = 1;
+                canvas.height = 1;
+            } else if (gpuCanvas) {
+                canvas.width = gpuCanvas[0];
+                canvas.height = gpuCanvas[1];
+                gpuCanvas = null;
+            }
+        } catch (e) { log("canvas " + on + ": " + e); }
+    }
+    let gpuReleaseTimer = 0;
+    function gpuRelease(on) {
+        clearTimeout(gpuReleaseTimer);
+        let api = null;
+        try { api = player && player.ruffle ? player.ruffle() : null; } catch (e) { }
+        const canRelease = !!api && typeof api.releaseGpuResources === "function";
+        if (!on) {
+            if (canRelease) try { api.restoreGpuResources(); } catch (e) { log("gpu restore: " + e); }
+            return;
+        }
+        gpuReleaseTimer = setTimeout(() => {
+            if (!lowMem) return;
+            if (canRelease) {
+                try { log("gpu release: ~" + Math.round(api.releaseGpuResources() / 1048576) + " MB"); }
+                catch (e) { log("gpu release: " + e); }
+            }
+            shrinkCanvas(true);
+        }, 1000);
+    }
+    function setPixelRatio(ratio, scale) {
+        if (lowMem) return;
+        let want = ratio > 0 ? ratio : ratio < 0 ? Math.min(nativeDpr * -ratio, 3.5) : nativeDpr;
+        if (ratio === 0 && screenRatioCap > 0) want = Math.min(want, screenRatioCap);
+        if (scale && scale < 1) want = Math.max(1, want * scale);
+        want = Math.round(want * 100) / 100;
+        forcePixelRatio(want);
     }
     let touchRowH = 0;
     function applyTouchUi() {
@@ -489,6 +530,7 @@
     }
     window.__skuaKeyboard = {
         openVirtualKeyboard(p) {
+            if (loginLocked) return;
             keyboardWanted = true;
             if (!p.__skuaKeyboard) {
                 p.__skuaKeyboard = true;
@@ -526,14 +568,6 @@
         const shown = on ? real : streamerShown;
         if (shown && get("world.rootClass.ui.mcPortraitTarget.strName.text") === shown.toUpperCase())
             set("world.rootClass.ui.mcPortraitTarget.strName.text", name.toUpperCase());
-        if (!on) {
-            try {
-                const newChat = get("litePreference.data.bChatUI") === true;
-                r.callExternalInterface("setGameObject", "ui.nc.visible", newChat);
-                r.callExternalInterface("setGameObject", "ui.mcInterface.t1.visible", !newChat);
-                r.callExternalInterface("setGameObject", "ui.mcInterface.te.visible", false);
-            } catch (e) { }
-        }
     }
     function setStreamer(msg) {
         const next = msg.on ? { name: String(msg.name), guild: String(msg.guild) } : null;
@@ -558,6 +592,23 @@
                 setTimeout(() => { try { if (!streamer) applyStreamer(false); } catch (e) { } }, 80);
             }
         } catch (e) { log("streamer: " + e); }
+        try { syncLoginLock(); } catch (e) { log("login lock: " + e); }
+    }
+    let loginLocked = false;
+    let loginTimer = 0;
+    function syncLoginLock() {
+        const r = player && player.ruffle();
+        let onLogin = false;
+        try {
+            onLogin = !!r && r.callExternalInterface("isNull", "mcLogin.stage") === "false";
+        } catch (e) { }
+        loginLocked = !!streamer && onLogin;
+        if (loginLocked && keyboardWanted) {
+            keyboardWanted = false;
+            try { document.activeElement && document.activeElement.blur(); } catch (e) { }
+        }
+        if (!streamer && loginTimer) { clearInterval(loginTimer); loginTimer = 0; }
+        if (streamer && !loginTimer) loginTimer = setInterval(() => { try { syncLoginLock(); } catch (e) { } }, 250);
     }
     function setMuted(reason, on) {
         try {
@@ -625,6 +676,17 @@
                     window.__mvsBackground = appInBackground;
                     try { document.dispatchEvent(new Event("visibilitychange")); } catch (e) { log("background: " + e); }
                 }
+                break;
+            case "lowmem":
+                if (lowMem === !!msg.v) break;
+                lowMem = !!msg.v;
+                if (!lowMem) shrinkCanvas(false);
+                try {
+                    if (lowMem) forcePixelRatio(lowMemRatio);
+                    else setPixelRatio(gfx.dpr, governedScale());
+                } catch (e) { log("lowmem: " + e); }
+                log("lowmem " + lowMem + ", ratio " + window.devicePixelRatio);
+                gpuRelease(lowMem);
                 break;
             case "reload":
                 location.reload();
@@ -748,8 +810,81 @@
             if (gov.targetRate > 0) setTargetFps(gov.targetRate);
         } catch (e) {
             log("start failed: " + e);
+            await engineInitFailed(e);
+        }
+    }
+    let initReported = false;
+    const seriousErrors = [];
+    (() => {
+        const original = console.error.bind(console);
+        console.error = (...args) => {
+            try {
+                const text = args.map(a => String(a && a.stack || a)).join(" ");
+                if (/Serious error|panick|wasm|WebAssembly/i.test(text) && seriousErrors.length < 8) seriousErrors.push(text.slice(0, 600));
+            } catch (err) { }
+            return original(...args);
+        };
+    })();
+    function initKind(text) {
+        if (/out of memory|RangeError.*(memory|allocat)|WebAssembly\.Memory|could not allocate/i.test(text)) return "OutOfMemory";
+        if (/MIME|application\/wasm/i.test(text)) return "WasmMimeType";
+        if (/HTTP Status is not OK|\b404\b|NetworkError|Failed to fetch|fetch.*failed/i.test(text)) return "WasmNotFound";
+        if (/CompileError|LinkError|wasm validation|magic word/i.test(text)) return "InvalidWasm";
+        if (/Content Security|unsafe-eval/i.test(text)) return "CSPConflict";
+        if (/is not a function|undefined is not|Cannot read prop/i.test(text)) return "JavascriptConflict";
+        if (/WebGL|wgpu|renderer|canvas/i.test(text)) return "Renderer";
+        if (/swf|movie/i.test(text)) return "SwfLoad";
+        return "Unknown";
+    }
+    async function engineInitFailed(e) {
+        let retried = 0;
+        try { retried = Number(sessionStorage.getItem("mvsInitReload")) || 0; } catch (err) { }
+        const retry = Date.now() - retried > 180000;
+        if (!initReported) {
+            initReported = true;
+            try {
+                const chain = [];
+                for (let x = e, i = 0; x && i < 4; x = x.cause, i++)
+                    chain.push((x.name || (x.constructor && x.constructor.name) || "Error") + ": " + (x.message || String(x)) + "\n" + String(x.stack || "").slice(0, 2500));
+                const message = (e && (e.message || String(e))) || "unknown";
+                const all = chain.join("\n") + "\n" + seriousErrors.join("\n");
+                const kind = initKind(all);
+                let wasm = "none seen";
+                try {
+                    const entries = performance.getEntriesByType("resource").filter(r => /\.wasm(\?|$)/.test(r.name));
+                    const last = entries[entries.length - 1];
+                    if (last) {
+                        wasm = last.name + " status " + (last.responseStatus || "?") + ", " +
+                            Math.round((last.transferSize || last.encodedBodySize || 0) / 1024) + " KB, " + Math.round(last.duration) + " ms";
+                        try {
+                            const r = await fetch(last.name, { method: "HEAD", cache: "no-store" });
+                            wasm += "; recheck " + r.status + " " + (r.headers.get("content-type") || "?");
+                        } catch (err) { wasm += "; recheck failed: " + err; }
+                    }
+                } catch (err) { }
+                let version = "?";
+                try { version = (await (await fetch(base + "ruffle/VERSION", { cache: "no-store" })).text()).trim().slice(0, 200); } catch (err) { }
+                const details = [
+                    "kind: " + kind,
+                    "time: " + new Date().toISOString(),
+                    "ruffle: " + version,
+                    "wasm: " + wasm,
+                    "webview: " + ((/Chrome\/([\d.]+)/.exec(navigator.userAgent) || [0, "?"])[1]),
+                    "js heap: " + (performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + "/" + Math.round(performance.memory.jsHeapSizeLimit / 1048576) + " MB" : "?"),
+                    "reload: " + (retry ? "trying once" : "already tried, giving up"),
+                    "",
+                    all
+                ].join("\n");
+                log("game engine failed to start (" + kind + "): " + message);
+                send({ t: "ext", n: "mvsEngineInit", a: [kind + "\n" + String(message).replace(/\s+/g, " ").slice(0, 400) + "\n" + details.slice(0, 7000)] });
+            } catch (err) { log("init report: " + err); }
+        }
+        if (retry) {
+            try { sessionStorage.setItem("mvsInitReload", String(Date.now())); } catch (err) { }
+            setStatus("The game couldn't start. Trying again...");
+            setTimeout(() => location.reload(), 2500);
+        } else {
             setStatus("The game couldn't start. Close MVS and open it again.");
-            log("load failed: " + e);
         }
     }
     window.SkuaBridge = { boot, log };

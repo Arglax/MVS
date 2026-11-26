@@ -22,6 +22,7 @@ public required Func<bool> ScriptRunning { get; init; }
 public required Func<bool> AntiLagSummoned { get; init; }
 public required Func<bool> AntiLagFollowing { get; init; }
 public Action<string>? ScriptSuspendNotice { get; init; }
+public Func<IEnumerable<AdvancedSkill>?>? SkillSets { get; init; }
 }
 public enum FollowSource
 {
@@ -56,6 +57,8 @@ private bool? _lastReportedOffGoto;
 private bool _packetStreamLogged;
 private string? _skillClass;
 private ClassUseMode _skillMode = ClassUseMode.Base;
+private ButlerClassType _classType = ButlerClassType.None;
+private string? _modeNoteShownFor;
 private bool _skillsActive;
 private bool _skillsPaused;
 private string? _lastBypassMap;
@@ -704,16 +707,22 @@ if (string.IsNullOrEmpty(me))
 return;
 _skillClass = null;
 _skillMode = ClassUseMode.Base;
+_modeNoteShownFor = null;
 ButlerClassType type = AccountConfig.GetClassType(me);
+_classType = type;
 string? classToEquip = null;
 if (type != ButlerClassType.None)
 {
-classToEquip = AccountConfig.GetCboClassName(me, type);
-if (string.IsNullOrEmpty(classToEquip))
+if (Enum.TryParse(AccountConfig.GetCboClassMode(me, type), ignoreCase: true, out ClassUseMode mode))
+_skillMode = mode;
+string? cboClass = AccountConfig.GetCboClassName(me, type);
+if (string.IsNullOrEmpty(cboClass))
 _log($"No CoreBots {type} class configured for {me} - keeping current class.",
 $"No CoreBots {type} class configured for this account - keeping current class.");
-else if (Enum.TryParse(AccountConfig.GetCboClassMode(me, type), ignoreCase: true, out ClassUseMode mode))
-_skillMode = mode;
+else if (cboClass.Equals(AccountConfig.CboCurrentClass, StringComparison.OrdinalIgnoreCase))
+classToEquip = forceEquipCurrent ? _bot.Player?.CurrentClass?.Name : null;
+else
+classToEquip = cboClass;
 }
 else if (forceEquipCurrent)
 {
@@ -771,6 +780,26 @@ Wait(token, 250);
 }
 DebugLog.Log("Follower", $"character ready: class={_bot.Player?.CurrentClass?.Name} map={_bot.Map?.Name} loaded={_bot.Map?.Loaded}");
 }
+private ClassUseMode ResolveSkillMode(string skillClass)
+{
+ClassUseMode mode = _skillMode;
+try
+{
+List<AdvancedSkill>? sets = _settings.SkillSets?.Invoke()?.ToList();
+mode = AccountConfig.ResolveSkillMode(skillClass, _skillMode, _classType, sets);
+}
+catch (Exception ex)
+{
+DebugLog.Log("Follower", $"skill mode lookup failed: {ex.Message}");
+}
+if (mode != _skillMode && _modeNoteShownFor != skillClass)
+{
+_modeNoteShownFor = skillClass;
+_log($"{skillClass} has no {_skillMode} skill set - using {mode}.",
+$"{skillClass} has no {_skillMode} skill set - using {mode}.");
+}
+return mode;
+}
 private void StartSkills()
 {
 RefreshSkillState();
@@ -783,8 +812,9 @@ return;
 try
 {
 string skillClass = _skillClass ?? _bot.Player?.CurrentClass?.Name ?? "generic";
-DebugLog.Log("Follower", $"starting skill engine: {skillClass} ({_skillMode})");
-_bot.Skills.StartAdvanced(skillClass, false, _skillMode);
+ClassUseMode mode = ResolveSkillMode(skillClass);
+DebugLog.Log("Follower", $"starting skill engine: {skillClass} ({mode})");
+_bot.Skills.StartAdvanced(skillClass, false, mode);
 RefreshSkillState();
 DebugLog.Log("Follower", $"skill engine start state: TimerRunning={_skillsActive} IsPaused={_skillsPaused}");
 if (!_skillsActive)
@@ -1355,8 +1385,7 @@ return false;
 private bool SameServer(SyncData m)
 {
 string myServer = GameServer.CurrentName(_bot);
-return string.IsNullOrEmpty(m.Server) ||
-string.Equals(m.Server, myServer, StringComparison.OrdinalIgnoreCase);
+return GameServer.Same(m.Server, myServer, m.Username);
 }
 private void Wait(CancellationToken token, int ms)
 {

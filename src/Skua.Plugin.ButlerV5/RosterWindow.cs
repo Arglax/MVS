@@ -213,7 +213,7 @@ foreach (string name in _plugin.RecentPlayerTargets.Take(8))
 {
 Button chip = new()
 {
-Content = name,
+Content = Skua.Core.Scripts.ScriptOption.Mask(name),
 FontSize = 11,
 Padding = new Thickness(8, 2),
 MinHeight = 24,
@@ -247,10 +247,10 @@ List<SyncData> online = Roster.GetOnline(_plugin.OwnUsername);
 HashSet<string> myFollowers = new(_plugin.CurrentFollowers, StringComparer.OrdinalIgnoreCase);
 string? followingWho = _plugin.FollowingWho;
 bool pluginOff = !_plugin.PluginEnabled;
-_meText.Text = _plugin.OwnUsername ?? "(not logged in)";
-_stateText.Text = followingWho != null
+_meText.Text = Skua.Core.Scripts.ScriptOption.Mask(_plugin.OwnUsername ?? "(not logged in)");
+_stateText.Text = Skua.Core.Scripts.ScriptOption.Mask(followingWho != null
 ? $"Following {followingWho} ({(_plugin.FollowingHow == FollowSource.Ordered ? "summoned" : "manual")})"
-: "Not following anyone";
+: "Not following anyone");
 _stateText.Foreground = followingWho != null ? AvaloniaUi.Green : AvaloniaUi.SubText;
 _stopButton.IsVisible = followingWho != null;
 _stopButton.IsEnabled = !pluginOff;
@@ -319,13 +319,12 @@ bool followingMe = !string.IsNullOrEmpty(account.Following) &&
 account.Following.Equals(_plugin.OwnUsername ?? "", StringComparison.OrdinalIgnoreCase);
 bool followingOther = !string.IsNullOrEmpty(account.Following) && !followingMe;
 string myServer = _plugin.MyServerName;
-bool differentServer = !string.IsNullOrEmpty(account.Server) && !string.IsNullOrEmpty(myServer) &&
-!account.Server.Equals(myServer, StringComparison.OrdinalIgnoreCase);
+bool differentServer = !GameServer.Same(account.Server, myServer, account.Username);
 Grid grid = new() { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto") };
 StackPanel info = new() { VerticalAlignment = VerticalAlignment.Center };
 WrapPanel nameLine = new() { Orientation = Orientation.Horizontal };
 TextBlock name = AvaloniaUi.TextBlock(14);
-name.Text = account.Username;
+name.Text = Skua.Core.Scripts.ScriptOption.Mask(account.Username);
 name.FontWeight = FontWeight.SemiBold;
 nameLine.Children.Add(name);
 if (account.Attacking)
@@ -333,7 +332,7 @@ nameLine.Children.Add(MakeChip("fighting", AvaloniaUi.Orange));
 if (followingMe)
 nameLine.Children.Add(MakeChip("following me", AvaloniaUi.Green));
 else if (followingOther)
-nameLine.Children.Add(MakeChip($"following {account.Following}", AvaloniaUi.Accent));
+nameLine.Children.Add(MakeChip(Skua.Core.Scripts.ScriptOption.Mask($"following {account.Following}"), AvaloniaUi.Accent));
 else if (summonedByMe)
 nameLine.Children.Add(MakeChip("summoned", AvaloniaUi.SubText));
 if (account.ScriptOn)

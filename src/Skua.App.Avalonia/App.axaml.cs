@@ -376,7 +376,7 @@ if (settings.Get<bool>("CheckBotScriptsUpdates") && (getScripts.Missing > 0 || g
 && (settings.Get<bool>("AutoUpdateBotScripts")
 || dialogService.ShowMessageBox("Would you like to update your scripts?", "Script Update", true) == true))
 {
-await Skua.Core.Services.ScriptStartupUpdater.DownloadMissingAndOutdatedAsync(getScripts, dialogService);
+await Skua.Core.Services.ScriptStartupUpdater.DownloadMissingAndOutdatedAsync(getScripts, dialogService, reportSuccess: true);
 }
 }
 catch { }

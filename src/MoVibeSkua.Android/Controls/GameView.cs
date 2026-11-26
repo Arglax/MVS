@@ -58,8 +58,10 @@ catch (ObjectDisposedException)
 }
 }
 protected override AutomationPeer OnCreateAutomationPeer() => new ControlAutomationPeer(this);
+public static string? LoadReason { get; set; }
 public static void Navigate(string url)
 {
+LoadReason ??= "game page requested";
 _lastUrl = url;
 if (Live() is null)
 {
@@ -129,9 +131,22 @@ view.OnResume();
 view.ResumeTimers();
 });
 }
+private static FrameLayoutHolder? _holder;
+private sealed class FrameLayoutHolder : global::Android.Widget.FrameLayout
+{
+public FrameLayoutHolder(Context context) : base(context) { }
+}
+private static global::Android.Widget.FrameLayout Holder(Context context)
+{
+if (_holder is { Handle: not 0 })
+return _holder;
+_holder = new FrameLayoutHolder(global::Android.App.Application.Context);
+return _holder;
+}
 protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
 {
 Context context = (parent as AndroidViewControlHandle)?.View.Context ?? global::Android.App.Application.Context;
+global::Android.Widget.FrameLayout holder = Holder(context);
 if (_webView is { Handle: 0 })
 {
 _webView = null;
@@ -140,23 +155,82 @@ _pendingUrl ??= _lastUrl;
 if (_webView is null)
 {
 _webView = CreateWebView(context);
+LoadReason ??= _lastUrl is null ? null : "new WebView (previous one gone)";
+Trace.WriteLine("[GameView] game WebView created" + (_lastUrl is null ? " (first start)" : " (previous one gone; the game loads again)"));
 if (_pendingUrl is not null)
 {
 _webView.LoadUrl(_pendingUrl);
 _pendingUrl = null;
 }
 }
-else if (_webView.Parent is global::Android.Views.ViewGroup oldParent)
+if (!ReferenceEquals(_webView.Parent, holder))
 {
+if (_webView.Parent is global::Android.Views.ViewGroup oldParent)
 oldParent.RemoveView(_webView);
+holder.AddView(_webView, new global::Android.Widget.FrameLayout.LayoutParams(-1, -1));
 }
-return new AndroidViewControlHandle(_webView);
+bool wasParked = _park is not null && ReferenceEquals(holder.Parent, _park);
+if (holder.Parent is global::Android.Views.ViewGroup holderParent)
+holderParent.RemoveView(holder);
+holder.ClipBounds = null;
+global::Android.Widget.FrameLayout wrapper = new(context);
+wrapper.AddView(holder, new global::Android.Widget.FrameLayout.LayoutParams(-1, -1));
+if (wasParked)
+{
+ApplyClip(_webView);
+Trace.WriteLine("[GameView] game view unparked");
+}
+ParkOnDestroy = false;
+return new AndroidViewControlHandle(wrapper);
 }
 protected override void DestroyNativeControlCore(IPlatformHandle control)
 {
-if (_webView is { Handle: not 0, Parent: global::Android.Views.ViewGroup parent })
-parent.RemoveView(_webView);
+try
+{
+if (ParkOnDestroy && MainActivity.Current is { } activity)
+Park(activity);
+else if (_holder is { Handle: not 0 } holder && holder.Parent is global::Android.Views.ViewGroup parent && !ReferenceEquals(parent, _park))
+parent.RemoveView(holder);
 }
+catch (Exception ex)
+{
+Trace.WriteLine($"[GameView] host release: {ex.Message}");
+}
+}
+private static global::Android.Widget.FrameLayout? _park;
+public static bool ParkOnDestroy { get; set; }
+public static void Park(global::Android.App.Activity activity)
+{
+try
+{
+if (_holder is not { Handle: not 0 } holder || Live() is null)
+return;
+if (_park is not null && ReferenceEquals(holder.Parent, _park))
+return;
+if (_park is null || !ReferenceEquals(_park.Context, activity) || _park.Parent is null)
+{
+if (_park?.Parent is global::Android.Views.ViewGroup oldPark)
+oldPark.RemoveView(_park);
+_park = new global::Android.Widget.FrameLayout(activity) { ImportantForAccessibility = global::Android.Views.ImportantForAccessibility.NoHideDescendants };
+activity.AddContentView(_park, new global::Android.Views.ViewGroup.LayoutParams(-1, -1));
+}
+int width = holder.Width > 0 ? holder.Width : -1;
+int height = holder.Height > 0 ? holder.Height : -1;
+int[] at = new int[2];
+holder.GetLocationInWindow(at);
+if (holder.Parent is global::Android.Views.ViewGroup parent)
+parent.RemoveView(holder);
+holder.ClipBounds = new Rect(0, 0, 0, 0);
+_park.AddView(holder, new global::Android.Widget.FrameLayout.LayoutParams(width, height) { LeftMargin = at[0], TopMargin = at[1] });
+ParkOnDestroy = false;
+Trace.WriteLine($"[GameView] game view parked ({width}x{height})");
+}
+catch (Exception ex)
+{
+Trace.WriteLine($"[GameView] park failed: {ex.Message}");
+}
+}
+public static bool IsParked => _park is not null && _holder is { Handle: not 0 } holder && ReferenceEquals(holder.Parent, _park);
 private static AWebView CreateWebView(Context context)
 {
 AWebView.SetWebContentsDebuggingEnabled(Platform.DevMode.IsOn);
@@ -233,6 +307,12 @@ return true;
 }
 private static bool IsGamePage(global::Android.Net.Uri uri) =>
 uri.Host == "127.0.0.1" && Uri.TryCreate(_lastUrl, UriKind.Absolute, out Uri? page) && uri.Port == page.Port;
+public override void OnPageStarted(AWebView? view, string? url, global::Android.Graphics.Bitmap? favicon)
+{
+base.OnPageStarted(view, url, favicon);
+Trace.WriteLine($"[GameView] game page load: {url} ({LoadReason ?? "first start or the page itself"})");
+LoadReason = null;
+}
 public override bool OnRenderProcessGone(AWebView? view, RenderProcessGoneDetail? detail)
 {
 Trace.WriteLine("[GameView] renderer process gone; reloading");
@@ -248,6 +328,7 @@ parent.RemoveView(view);
 view.Destroy();
 _webView = null;
 _pendingUrl = url;
+LoadReason = "renderer process gone";
 }
 GameViewRecovery.RequestRebuild();
 return true;

@@ -10,8 +10,8 @@
     <AssemblyName>MoVibeSkua</AssemblyName>
     <ApplicationId>com.arglax.movibeskua</ApplicationId>
     <ApplicationTitle>MoVibeSkua</ApplicationTitle>
-    <ApplicationVersion>14</ApplicationVersion>
-    <ApplicationDisplayVersion>1.0.5</ApplicationDisplayVersion>
+    <ApplicationVersion>15</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.6</ApplicationDisplayVersion>
     <RuntimeIdentifiers Condition="'$(Configuration)' == 'Release'">android-arm64</RuntimeIdentifiers>
     <RuntimeIdentifiers Condition="'$(Configuration)' != 'Release'">android-arm64;android-x64</RuntimeIdentifiers>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
@@ -22,6 +22,7 @@
     <PublishTrimmed>false</PublishTrimmed>
     <RunAOTCompilation>false</RunAOTCompilation>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
     <AndroidUseAssemblyStore>true</AndroidUseAssemblyStore>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>
@@ -64,6 +65,7 @@
   </ItemGroup>
   <ItemGroup>
     <AndroidJavaSource Include="Java\**\*.java" />
+    <AndroidLibrary Include="libs\shizuku\*.aar" Bind="false" />
   </ItemGroup>
   <ItemGroup>
     <AndroidAsset Include="$(DesktopAppDir)QuestData.json" Link="Assets\seed\QuestData.json" />

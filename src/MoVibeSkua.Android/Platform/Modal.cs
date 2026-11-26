@@ -18,7 +18,7 @@ public static T Run<T>(Func<Action<T>, Control> build, T fallback)
 {
 if (Dispatcher.UIThread.CheckAccess())
 {
-MobileShellView? shell = MobileShellView.Instance;
+MobileShellView? shell = ArmyShell.Shell();
 if (shell is null)
 return fallback;
 T result = fallback;
@@ -41,7 +41,7 @@ return result;
 TaskCompletionSource<T> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 Dispatcher.UIThread.Post(() =>
 {
-MobileShellView? shell = MobileShellView.Instance;
+MobileShellView? shell = ArmyShell.Shell();
 if (shell is null)
 {
 tcs.TrySetResult(fallback);
@@ -65,7 +65,7 @@ public static void Show(Func<Action<string>, Control> build)
 {
 Dispatcher.UIThread.Post(() =>
 {
-MobileShellView? shell = MobileShellView.Instance;
+MobileShellView? shell = ArmyShell.Shell();
 if (shell is null)
 return;
 Control? card = null;

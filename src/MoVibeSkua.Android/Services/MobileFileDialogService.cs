@@ -66,7 +66,7 @@ return Path.GetDirectoryName(files[0]);
 }
 private static List<string>? PickFiles(bool multiple)
 {
-TopLevel? top = MobileShellView.Instance is { } shell ? TopLevel.GetTopLevel(shell) : null;
+TopLevel? top = Platform.ArmyShell.Shell() is { } shell ? TopLevel.GetTopLevel(shell) : null;
 if (top is null)
 return null;
 return Modal.Await(async () =>

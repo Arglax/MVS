@@ -21,7 +21,9 @@ return _data.TryGetValue(format, out object? value) ? value : string.Empty;
 }
 public string GetText()
 {
-return GetClipboard()?.GetTextAsync().GetAwaiter().GetResult() ?? string.Empty;
+return GetClipboard() is { } clipboard
+? global::Avalonia.Input.Platform.ClipboardExtensions.TryGetTextAsync(clipboard).GetAwaiter().GetResult() ?? string.Empty
+: string.Empty;
 }
 private static global::Avalonia.Input.Platform.IClipboard? GetClipboard()
 {

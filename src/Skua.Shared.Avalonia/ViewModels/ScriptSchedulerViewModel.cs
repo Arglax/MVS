@@ -262,6 +262,7 @@ catch (Exception ex)
 _dialogService.ShowMessageBox($"Failed to save playlist: {ex.Message}", "Save Error");
 }
 }
+public void StartQueueDirect() => StartQueue();
 [RelayCommand]
 private void LoadPlaylist()
 {
@@ -273,6 +274,16 @@ return;
 string? path = _fileDialog.OpenFile("JSON Files (*.json)|*.json|All files (*.*)|*.*");
 if (path != null && File.Exists(path))
 {
+if (!LoadPlaylistFromFile(path))
+{
+_dialogService.ShowMessageBox("Failed to load playlist.", "Load Error");
+}
+}
+}
+public bool LoadPlaylistFromFile(string path)
+{
+if (IsRunningQueue || string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+return false;
 try
 {
 var data = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<SavedScriptItem>>(File.ReadAllText(path));
@@ -289,13 +300,14 @@ vm.Name = item.Name;
 ScriptQueue.Add(vm);
 }
 }
+return true;
 }
 }
 catch (Exception ex)
 {
-_dialogService.ShowMessageBox($"Failed to load playlist: {ex.Message}", "Load Error");
+System.Diagnostics.Trace.WriteLine($"Failed to load playlist '{path}': {ex.Message}");
 }
-}
+return false;
 }
 private string GetFormattedDuration()
 {
@@ -327,6 +339,7 @@ _discord.SuppressDefaultNotifications = false;
 _queueCts?.Dispose();
 _queueCts = null;
 _ = _discord.SendEmbedAsync("Scheduler Finished", "All scripts in the **Scheduler** playlist have completed!", 0x00FF00);
+StrongReferenceMessenger.Default.Send(new PlaylistFinishedMessage(), (int)MessageChannels.ScriptStatus);
 return;
 }
 var nextScript = ScriptQueue[CurrentIndex];

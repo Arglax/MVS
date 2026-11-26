@@ -1,1 +1,1 @@
-arglax-gc-sweep-fix b9d72bf7 (based on 4aa12e8d, CI lzma,jpegxr: finish marking and start the sweep before the game runs again)
+arglax-gc-gpu 5377a0b0 (b9d72bf7 gc-sweep-fix + GPU release + shape release, CI lzma,jpegxr run 45719153163)

@@ -11,6 +11,12 @@ bool Attack(Monster monster)
 return Attack(monster.MapID);
 }
 bool Attack(string name);
+bool SelectMonster(int id);
+bool SelectMonster(Monster monster)
+{
+return SelectMonster(monster.MapID);
+}
+bool SelectMonster(string name);
 bool AttackPlayer(string name);
 void CancelAutoAttack();
 void CancelTarget();

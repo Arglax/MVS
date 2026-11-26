@@ -49,6 +49,15 @@ public const string Source = """
             private static bool IsLink(string text) =>
                 text.StartsWith("https://", global::System.StringComparison.OrdinalIgnoreCase)
                 || text.StartsWith("http://", global::System.StringComparison.OrdinalIgnoreCase);
+            // Target of Path.Combine(CoreBots.ButlerLogDir, ...): Butler's map and order files, lower-cased
+            // as CoreBots writes them, so a name typed in another case still finds them on a case-sensitive phone.
+            public static string ButlerFile(params string[] parts)
+            {
+                string path = global::System.IO.Path.Combine(parts);
+                string dir = global::System.IO.Path.GetDirectoryName(path);
+                string name = global::System.IO.Path.GetFileName(path).ToLowerInvariant();
+                return string.IsNullOrEmpty(dir) ? name : global::System.IO.Path.Combine(dir, name);
+            }
             public static global::System.Diagnostics.Process Open(string target)
             {
                 global::Skua.Core.Utils.Link.OpenBrowser((target ?? string.Empty).Trim().Trim('"'));

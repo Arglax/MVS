@@ -8,6 +8,7 @@ using Skua.Core.Models;
 using Skua.Core.Utils;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 namespace Skua.App.Avalonia.ViewModels.AppLogs;
 public partial class LogTabViewModel : ObservableRecipient
 {
@@ -18,7 +19,7 @@ Title = title;
 _logService = logService;
 _dispatcherService = dispatcherService;
 _logType = logType;
-Logs.AddRange(logService.GetLogs(logType));
+Logs.AddRange(logService.GetLogs(logType).Select(Skua.Core.Scripts.ScriptOption.Mask));
 }
 private readonly ILogService _logService;
 private readonly IDispatcherService _dispatcherService;
@@ -41,18 +42,32 @@ private void CopyLog()
 {
 Ioc.Default.GetRequiredService<IClipboardService>().SetText(LogsToString(Logs));
 }
+private const int MaxVisibleLines = 2000;
+private const int FlushIntervalMs = 200;
+private readonly System.Collections.Concurrent.ConcurrentQueue<string> _pending = new();
+private int _flushScheduled;
 private void AddLog(LogTabViewModel recipient, AddLogMessage message)
 {
 if (message.LogType != recipient._logType)
 return;
-_dispatcherService.Invoke(() =>
-{
-recipient.Logs.Add(message.Text);
-if (recipient.Logs.Count > 2000)
-{
-recipient.Logs.RemoveAt(0);
+recipient._pending.Enqueue(message.Text);
+if (System.Threading.Interlocked.Exchange(ref recipient._flushScheduled, 1) == 0)
+_ = System.Threading.Tasks.Task.Delay(FlushIntervalMs).ContinueWith(_ => recipient._dispatcherService.Invoke(recipient.FlushPending));
 }
-});
+private void FlushPending()
+{
+System.Threading.Interlocked.Exchange(ref _flushScheduled, 0);
+List<string> batch = new();
+while (_pending.TryDequeue(out string? line))
+batch.Add(Skua.Core.Scripts.ScriptOption.Mask(line));
+if (batch.Count == 0)
+return;
+if (batch.Count > MaxVisibleLines)
+batch.RemoveRange(0, batch.Count - MaxVisibleLines);
+foreach (string line in batch)
+Logs.Add(line);
+while (Logs.Count > MaxVisibleLines)
+Logs.RemoveAt(0);
 }
 private static string LogsToString(IEnumerable<string> logs)
 {

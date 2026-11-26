@@ -15,7 +15,9 @@ public string Username { get; set; } = string.Empty;
 public string Password { get; set; } = string.Empty;
 public string Server { get; set; } = "Twilly";
 [JsonIgnore]
-public string Title => Username;
+public int Index { get; set; }
+[JsonIgnore]
+public string Title => Streamer.IsOn ? Streamer.AccountAlias(Index) : Username;
 [JsonIgnore]
 public string Subtitle => $"Server: {Server}";
 }
