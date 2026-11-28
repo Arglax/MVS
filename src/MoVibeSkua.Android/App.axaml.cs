@@ -44,18 +44,24 @@ Diagnostics.ProblemReports.HookGame(Ioc.Default.GetRequiredService<Skua.Core.Int
 Platform.FollowerSaver.Start();
 Skua.App.Avalonia.Services.ClassRatings.AttachToGame(Ioc.Default.GetRequiredService<Skua.Core.Interfaces.IFlashUtil>());
 }
-if (ApplicationLifetime is ISingleViewApplicationLifetime single)
+if (ApplicationLifetime is IActivityApplicationLifetime activity)
+activity.MainViewFactory = () => MainView ?? CreateShell();
+else if (ApplicationLifetime is ISingleViewApplicationLifetime single)
+single.MainView = CreateShell();
+base.OnFrameworkInitializationCompleted();
+}
+public static Avalonia.Controls.Control? MainView { get; set; }
+private static Avalonia.Controls.Control CreateShell()
 {
 Trace.WriteLine("[Startup] creating shell");
-single.MainView = new MobileShellView
+MainView = new MobileShellView
 {
 DataContext = Ioc.Default.GetRequiredService<ShellViewModel>()
 };
 Trace.WriteLine("[Startup] starting game");
 StartGame();
 Trace.WriteLine("[Startup] game started");
-}
-base.OnFrameworkInitializationCompleted();
+return MainView;
 }
 private void ConfigureServices()
 {

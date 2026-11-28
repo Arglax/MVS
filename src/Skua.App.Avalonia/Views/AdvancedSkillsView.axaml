@@ -93,7 +93,7 @@
                             CornerRadius="8"
                             Padding="12">
                         <TextBox Classes="bottom-line"
-                                 Watermark="Class Name (e.g. Void Highlord)"
+                                 PlaceholderText="Class Name (e.g. Void Highlord)"
                                  Text="{Binding CurrentClassName}" />
                     </Border>
                     <Border Grid.Row="0" Grid.Column="1"
@@ -225,11 +225,11 @@
                                                   ToolTip.Tip="Comparison: ≥ (greater or equal) / ≤ (less or equal)" />
                                     <TextBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
                                              Classes="bottom-line"
-                                             Watermark="Aura name"
+                                             PlaceholderText="Aura name"
                                              Text="{Binding UseRules.AuraName}" />
                                     <TextBox Grid.Row="1" Grid.Column="1"
                                              Classes="bottom-line"
-                                             Watermark="Stacks"
+                                             PlaceholderText="Stacks"
                                              Text="{Binding UseRules.AuraUseValue}" />
                                     <ComboBox Grid.Row="1" Grid.Column="2"
                                               MinWidth="90"
@@ -246,9 +246,9 @@
                                                 <ToggleButton Grid.Row="1" Grid.Column="0" Classes="compare" VerticalAlignment="Bottom"
                                                               IsChecked="{Binding IsGreater}"
                                                               ToolTip.Tip="Comparison: ≥ (greater or equal) / ≤ (less or equal)" />
-                                                <TextBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Classes="bottom-line" Watermark="Aura name"
+                                                <TextBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Classes="bottom-line" PlaceholderText="Aura name"
                                                          Text="{Binding AuraName}" />
-                                                <TextBox Grid.Row="1" Grid.Column="1" Classes="bottom-line" Watermark="Stacks"
+                                                <TextBox Grid.Row="1" Grid.Column="1" Classes="bottom-line" PlaceholderText="Stacks"
                                                          Text="{Binding StackCount}" />
                                                 <ComboBox Grid.Row="1" Grid.Column="2"
                                                           MinWidth="90"

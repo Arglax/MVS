@@ -10,9 +10,11 @@ using Skua.App.Avalonia.Services;
 using Skua.App.Avalonia.ViewModels;
 using Skua.App.Avalonia.ViewModels.MainMenu;
 using Skua.Core.Interfaces;
+using Skua.Core.Models.Servers;
 using Skua.Core.Messaging;
 using System;
 using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -55,6 +57,15 @@ private struct RECT
 public int Left, Top, Right, Bottom;
 }
 private const int WM_NCACTIVATE = 0x0086;
+private const int WM_NCHITTEST = 0x0084;
+private const int HTLEFT = 10;
+private const int HTRIGHT = 11;
+private const int HTTOP = 12;
+private const int HTTOPLEFT = 13;
+private const int HTTOPRIGHT = 14;
+private const int HTBOTTOM = 15;
+private const int HTBOTTOMLEFT = 16;
+private const int HTBOTTOMRIGHT = 17;
 private const int WM_WINDOWPOSCHANGED = 0x0047;
 private const int WM_DPICHANGED = 0x02E0;
 private const int WM_GETDPISCALEDSIZE = 0x02E4;
@@ -104,6 +115,9 @@ this.ExtendClientAreaToDecorationsHint = false;
 public MainWindow()
 {
 InitializeComponent();
+ResizeGripOverlay.IsVisible = HotKeys.HostHwnd == IntPtr.Zero;
+if (HotKeys.HostHwnd != IntPtr.Zero)
+FlashHost.Margin = new global::Avalonia.Thickness(0);
 _mainViewModel = Ioc.Default.GetRequiredService<MainViewModel>();
 _mainMenuVm = Ioc.Default.GetRequiredService<MainMenuViewModel>();
 _flash = Ioc.Default.GetRequiredService<IFlashUtil>();
@@ -433,6 +447,56 @@ catch { }
 }
 }
 #if IS_WINDOWS
+private void BeginGripResize(WindowEdge edge, PointerPressedEventArgs e)
+{
+if (HotKeys.HostHwnd != IntPtr.Zero || !CanResize || WindowState != WindowState.Normal ||
+!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+return;
+e.Handled = true;
+BeginResizeDrag(edge, e);
+}
+private void ResizeWestGrip_PointerPressed(object? sender, PointerPressedEventArgs e) => BeginGripResize(WindowEdge.West, e);
+private void ResizeEastGrip_PointerPressed(object? sender, PointerPressedEventArgs e) => BeginGripResize(WindowEdge.East, e);
+private void ResizeSouthGrip_PointerPressed(object? sender, PointerPressedEventArgs e) => BeginGripResize(WindowEdge.South, e);
+private void ResizeSouthWestGrip_PointerPressed(object? sender, PointerPressedEventArgs e) => BeginGripResize(WindowEdge.SouthWest, e);
+private void ResizeSouthEastGrip_PointerPressed(object? sender, PointerPressedEventArgs e) => BeginGripResize(WindowEdge.SouthEast, e);
+private static bool TryGetResizeHitTest(IntPtr hWnd, IntPtr lParam, out IntPtr hitTest)
+{
+hitTest = IntPtr.Zero;
+if (!GetWindowRect(hWnd, out RECT bounds))
+return false;
+long packedPoint = lParam.ToInt64();
+int x = unchecked((short)(packedPoint & 0xFFFF));
+int y = unchecked((short)((packedPoint >> 16) & 0xFFFF));
+uint dpi = GetDpiForWindow(hWnd);
+double scale = dpi > 0 ? dpi / 96.0 : 1.0;
+int resizeBand = Math.Max(8, (int)Math.Ceiling(12 * scale));
+if (x < bounds.Left || x >= bounds.Right || y < bounds.Top || y >= bounds.Bottom)
+return false;
+bool left = x < bounds.Left + resizeBand;
+bool right = x >= bounds.Right - resizeBand;
+bool top = y < bounds.Top + resizeBand;
+bool bottom = y >= bounds.Bottom - resizeBand;
+if (top && left)
+hitTest = (IntPtr)HTTOPLEFT;
+else if (top && right)
+hitTest = (IntPtr)HTTOPRIGHT;
+else if (bottom && left)
+hitTest = (IntPtr)HTBOTTOMLEFT;
+else if (bottom && right)
+hitTest = (IntPtr)HTBOTTOMRIGHT;
+else if (left)
+hitTest = (IntPtr)HTLEFT;
+else if (right)
+hitTest = (IntPtr)HTRIGHT;
+else if (top)
+hitTest = (IntPtr)HTTOP;
+else if (bottom)
+hitTest = (IntPtr)HTBOTTOM;
+else
+return false;
+return true;
+}
 private IntPtr WindowSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, nuint uIdSubclass, IntPtr dwRefData)
 {
 if (uMsg == WM_NCACTIVATE)
@@ -449,6 +513,14 @@ return DefSubclassProc(hWnd, uMsg, (IntPtr)1, lParam);
 }
 }
 }
+}
+if (uMsg == WM_NCHITTEST &&
+CanResize &&
+WindowState == WindowState.Normal &&
+HotKeys.HostHwnd == IntPtr.Zero &&
+TryGetResizeHitTest(hWnd, lParam, out IntPtr resizeHit))
+{
+return resizeHit;
 }
 if (uMsg == WM_GETDPISCALEDSIZE && HotKeys.HostHwnd != IntPtr.Zero && lParam != IntPtr.Zero && GetWindowRect(hWnd, out RECT current))
 {

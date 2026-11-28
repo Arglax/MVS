@@ -1,7 +1,8 @@
 using Newtonsoft.Json;
 using Skua.Core.Models.Converters;
+using System.ComponentModel;
 namespace Skua.Core.Models.Servers;
-public class Server
+public class Server : INotifyPropertyChanged
 {
 [JsonProperty("sName")]
 public string Name { get; set; }
@@ -27,6 +28,20 @@ public int MaxPlayers { get; set; }
 public int Level { get; set; }
 [JsonIgnore]
 public long Ping { get; set; } = -1;
+[JsonIgnore]
+public ServerLatencyStatus LatencyStatus
+{
+get => _latencyStatus;
+set
+{
+if (_latencyStatus == value)
+return;
+_latencyStatus = value;
+PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LatencyStatus)));
+}
+}
+private ServerLatencyStatus _latencyStatus = ServerLatencyStatus.Unknown;
+public event PropertyChangedEventHandler? PropertyChanged;
 public override string ToString()
 {
 return $"{Name} - {PlayerCount}";

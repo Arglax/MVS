@@ -204,6 +204,19 @@ Server = account.Server;
 Usage.UsageTracker.Track(Usage.Signal.LOGIN_QUICK);
 await Login();
 }
+public async Task<(bool Ok, string Reason)> LoginSavedAsync(string username, string? server = null)
+{
+SavedAccount? account = SavedAccounts.Load().Find(a => a.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+if (account is null)
+return (false, "account not saved on this phone");
+if (IsBusy)
+return (false, "a login is already running");
+if (!string.IsNullOrWhiteSpace(server))
+account = new SavedAccount { Username = account.Username, Password = account.Password, Server = server };
+await QuickLogin(account);
+bool ok = await Task.Run(() => { try { return _bot.Player.LoggedIn; } catch { return false; } });
+return ok ? (true, string.Empty) : (false, _bot.Servers.LastLoginError is { } why ? why : "login did not complete");
+}
 [RelayCommand]
 private void EditAccount(SavedAccount? account)
 {

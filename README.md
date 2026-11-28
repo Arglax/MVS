@@ -3,7 +3,7 @@
 **[VibeSkua](https://github.com/NinjaXz/VibeSkua) for Android.** The Skua bot client for AdventureQuest Worlds, running on a phone: the same scripts and the same tools, with no PC required.
 
 > [!IMPORTANT]
-> **Download size:** `MVS_v1-0-6.apk`, about 63 MB.
+> **Download size:** `MVS_v1-0-7.apk`, about 64 MB.
 >
 > **64-bit ARM phones only.** The APK is built for `arm64-v8a`. It does not install on 32-bit phones, x86 tablets, Chromebooks with Intel or AMD processors, or PC emulators.
 >
@@ -26,7 +26,7 @@
 
 ## Download and installation
 
-1. Download `MVS_v1-0-6.apk` from the [latest release](../../releases/latest).
+1. Download `MVS_v1-0-7.apk` from the [latest release](../../releases/latest).
 2. Open the file on your phone and allow "Install unknown apps" when Android asks.
 3. Launch **MoVibeSkua**. On first run the app offers to download the community scripts; accept, then open **Repo** and press **Start** on any script.
 

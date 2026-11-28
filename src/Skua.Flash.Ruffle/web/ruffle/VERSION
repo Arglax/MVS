@@ -1,1 +1,1 @@
-arglax-gc-gpu 5377a0b0 (b9d72bf7 gc-sweep-fix + GPU release + shape release, CI lzma,jpegxr run 45719153163)
+arglax-memstats be11e86e (live/peak meter + size buckets, CI run 46040830725)

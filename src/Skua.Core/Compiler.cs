@@ -87,15 +87,8 @@ if (cachedAssemblyPath != null)
 {
 try
 {
-if (loadContext != null)
-{
-using FileStream stream = File.OpenRead(cachedAssemblyPath);
-Assembly = loadContext.LoadFromStream(stream);
-}
-else
-{
-Assembly = Assembly.LoadFrom(cachedAssemblyPath);
-}
+Assembly = LoadCachedWithRetry(cachedAssemblyPath, loadContext)
+?? throw new BadImageFormatException("Cached script assembly is unreadable.", cachedAssemblyPath);
 RegisterCompiled(hash, cachedAssemblyPath);
 RegisterLoaded(cachedAssemblyPath, Assembly);
 }
@@ -288,90 +281,96 @@ return Path.Combine(_cacheDirectory, fileName);
 }
 private bool CompileOrWaitForAssembly(string source, string outputPath, ScriptLoadContext? loadContext)
 {
-string mutexName = $"Global\\Skua_Compile_{Path.GetFileName(outputPath).Replace(".dll", "").Replace("-", "_")}";
-Mutex? compilationMutex = null;
-try
-{
-compilationMutex = new Mutex(false, mutexName);
-if (!compilationMutex.WaitOne(TimeSpan.FromMinutes(2)))
+using FileStream? fileLock = AcquireCacheLock(outputPath, TimeSpan.FromMinutes(3));
+if (fileLock is null)
 {
 ErrorType = ExecutionErrorTypes.Compilation;
-ErrorMessage = "Timeout waiting for script compilation to complete.";
-SetErrors(new ApplicationException(ErrorMessage));
+ErrorMessage = "Timeout waiting for script compilation to complete (files busy).";
+SetErrors(new IOException(ErrorMessage));
 return false;
 }
-try
-{
-if (File.Exists(outputPath))
-{
 if (FastVerifyAssembly(outputPath))
 {
-if (loadContext != null)
+Assembly? cached = LoadCached(outputPath, loadContext);
+if (cached is not null)
 {
-using FileStream stream = File.OpenRead(outputPath);
-Assembly = loadContext.LoadFromStream(stream);
-}
-else
-{
-Assembly = Assembly.LoadFrom(outputPath);
-}
+Assembly = cached;
 return true;
 }
-else
-{
-try
-{
-File.Delete(outputPath);
-}
-catch
-{
-}
-}
+TryDelete(outputPath);
 }
 if (!CompileAssemblyToDisk(source, outputPath))
 return false;
-if (loadContext != null)
+Assembly? built = LoadCached(outputPath, loadContext);
+if (built is null)
 {
-using FileStream stream = File.OpenRead(outputPath);
-Assembly = loadContext.LoadFromStream(stream);
-}
-else
-{
-Assembly = Assembly.LoadFrom(outputPath);
-}
-return true;
-}
-finally
-{
-compilationMutex.ReleaseMutex();
-}
-}
-catch (AbandonedMutexException)
-{
-if (File.Exists(outputPath))
-{
-if (FastVerifyAssembly(outputPath))
-{
-if (loadContext != null)
-{
-using FileStream stream = File.OpenRead(outputPath);
-Assembly = loadContext.LoadFromStream(stream);
-}
-else
-{
-Assembly = Assembly.LoadFrom(outputPath);
-}
-return true;
-}
-}
 ErrorType = ExecutionErrorTypes.Compilation;
-ErrorMessage = "Compilation was abandoned by another process.";
-SetErrors(new ApplicationException(ErrorMessage));
+ErrorMessage = "The compiled script could not be loaded (Bad IL format).";
+SetErrors(new BadImageFormatException(ErrorMessage));
 return false;
 }
-finally
+Assembly = built;
+return true;
+}
+private static Assembly? LoadCached(string path, ScriptLoadContext? loadContext)
 {
-compilationMutex?.Dispose();
+try
+{
+if (loadContext != null)
+{
+using FileStream stream = File.OpenRead(path);
+return loadContext.LoadFromStream(stream);
+}
+return Assembly.LoadFrom(path);
+}
+catch (Exception ex) when (ex is BadImageFormatException or IOException)
+{
+return null;
+}
+}
+public static Assembly? LoadCachedWithRetry(string path, ScriptLoadContext? loadContext)
+{
+Assembly? loaded = LoadCached(path, loadContext);
+if (loaded is not null)
+return loaded;
+using (AcquireCacheLock(path, TimeSpan.FromMinutes(3)))
+{
+}
+return FastVerifyAssembly(path) ? LoadCached(path, loadContext) : null;
+}
+public static FileStream? AcquireCacheLock(string dllPath, TimeSpan timeout)
+{
+string lockPath = dllPath + ".lock";
+DateTime until = DateTime.UtcNow + timeout;
+while (true)
+{
+try
+{
+Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
+return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+}
+catch (IOException) when (DateTime.UtcNow < until)
+{
+Thread.Sleep(250);
+}
+catch (UnauthorizedAccessException) when (DateTime.UtcNow < until)
+{
+Thread.Sleep(250);
+}
+catch
+{
+return null;
+}
+}
+}
+private static void TryDelete(string path)
+{
+try
+{
+File.Delete(path);
+}
+catch
+{
 }
 }
 private bool CompileAssemblyToDisk(string source, string outputPath)
@@ -387,8 +386,10 @@ CSharpCompilation compilation = CSharpCompilation.Create(assemblyName)
 .AddSyntaxTrees(WithPrelude(tree));
 if (SaveGeneratedCode)
 GeneratedClassCode = source;
-using FileStream codeStream = new(outputPath, FileMode.Create, FileAccess.Write);
+string tempPath = $"{outputPath}.{Environment.ProcessId}.{Environment.CurrentManagedThreadId}.tmp";
 EmitResult? compilationResult = null;
+using (FileStream codeStream = new(tempPath, FileMode.Create, FileAccess.Write))
+{
 if (CompileWithDebug)
 {
 const DebugInformationFormat debugOptions = DebugInformationFormat.Embedded;
@@ -398,6 +399,11 @@ else
 {
 compilationResult = compilation.Emit(codeStream);
 }
+}
+if (compilationResult.Success)
+File.Move(tempPath, outputPath, true);
+else
+TryDelete(tempPath);
 if (!compilationResult.Success)
 {
 StringBuilder sb = new();

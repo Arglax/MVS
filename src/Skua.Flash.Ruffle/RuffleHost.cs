@@ -198,6 +198,12 @@ await WriteText(stream, 404, "Not Found", "text/plain", "not found", head.KeepAl
 #region Proxy
 [GeneratedRegex(@"^[A-Za-z0-9.-]+(:\d{1,5})?$")]
 private static partial Regex ProxyHostRegex();
+public static volatile bool SkipGearDownloads;
+private static int _gearSkipped;
+public static int GearSkipped => Volatile.Read(ref _gearSkipped);
+private static bool IsGearFile(string path) =>
+path.Contains("/gamefiles/items/", StringComparison.OrdinalIgnoreCase)
+&& path.EndsWith(".swf", StringComparison.OrdinalIgnoreCase);
 private async Task Proxy(HttpRequestHead head, string target, byte[] body, Stream stream, CancellationToken ct)
 {
 int firstSlash = target.IndexOf('/');
@@ -219,6 +225,14 @@ string query = head.Query.Length > 0 ? "?" + head.Query : string.Empty;
 if (!Uri.TryCreate($"{scheme}://{host}{rest}{query}", UriKind.Absolute, out Uri? uri))
 {
 await WriteText(stream, 400, "Bad Request", "text/plain", "bad proxy url", head.KeepAlive, ct).ConfigureAwait(false);
+return;
+}
+if (SkipGearDownloads && head.Method == "GET" && IsGearFile(uri.AbsolutePath))
+{
+int skipped = Interlocked.Increment(ref _gearSkipped);
+if (skipped <= 20 || skipped % 50 == 0)
+Trace.WriteLine($"[ArmyMemory] gear download skipped ({skipped}): {uri.AbsolutePath}");
+await WriteText(stream, 404, "Not Found", "text/plain", "skipped while hidden", head.KeepAlive, ct).ConfigureAwait(false);
 return;
 }
 HttpRequestMessage NewRequest()

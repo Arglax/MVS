@@ -118,7 +118,29 @@ public int OutdatedQuantity => _scripts.Count(s => s.Outdated);
 public int ScriptQuantity => _scripts.Count;
 public int BotScriptQuantity => _scripts.Count;
 public int PinnedQuantity => _scripts.Count(s => s.IsPinned);
-public bool ShowStartButton => !IsManagerMode;
+public bool ShowStartButton => !IsManagerMode && !IsPickMode;
+private Action<string>? _onPick;
+[ObservableProperty]
+private bool _isPickMode;
+partial void OnIsPickModeChanged(bool value) => OnPropertyChanged(nameof(ShowStartButton));
+public void BeginPick(Action<string> onPick)
+{
+_onPick = onPick;
+IsPickMode = true;
+}
+public void EndPick()
+{
+_onPick = null;
+IsPickMode = false;
+}
+[RelayCommand]
+private void PickScript(ScriptInfoViewModel? script)
+{
+if (script is null || !script.Downloaded || _onPick is not { } pick)
+return;
+EndPick();
+pick(script.LocalFile);
+}
 public IRelayCommand OpenScriptFolderCommand { get; }
 private const string SortByName = "Name";
 private const string SortByDate = "Date Created";

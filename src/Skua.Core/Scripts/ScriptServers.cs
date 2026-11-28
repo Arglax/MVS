@@ -307,12 +307,18 @@ return candidates.Find(x =>
 && (attemptedServers is null || !attemptedServers.Contains(x.Name ?? string.Empty)));
 }
 private bool ReloginFallbackEnabled => Options is ScriptOption { ReloginFallback: true };
+public static bool StayOnPreferredServer { get; set; }
+public static string? TeamServerName { get; set; }
+public static string? ConnectedServerName { get; private set; }
+private bool Stays(string? preferredName) => StayOnPreferredServer && !string.IsNullOrWhiteSpace(preferredName);
 private Server? SelectReloginServer(string? preferredName = null, HashSet<string>? attemptedServers = null)
 {
 List<Server> candidates = BuildReloginCandidates();
 if (candidates.Count == 0)
 return null;
 HashSet<string> triedServers = attemptedServers ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+if (Stays(preferredName))
+return FindByName(candidates, preferredName, true);
 if (!ReloginFallbackEnabled)
 {
 Server? preferredServer = FindByName(candidates, preferredName, true);
@@ -643,6 +649,8 @@ Interlocked.Decrement(ref _loginLoops);
 }
 private async Task<bool> RunLoginAttempts(string? preferredName, CancellationToken token)
 {
+if (StayOnPreferredServer && !string.IsNullOrWhiteSpace(TeamServerName))
+preferredName = TeamServerName;
 int tries = 0;
 HashSet<string> attemptedServers = new(StringComparer.OrdinalIgnoreCase);
 LastLoginError = null;
@@ -687,7 +695,7 @@ if (!await WaitForServerListReady(token))
 if (LastLoginError is not null)
 break;
 ReloginLog($"Attempt {tries}/{Options.ReloginTries}: server list screen not ready.");
-if (ReloginFallbackEnabled)
+if (ReloginFallbackEnabled && !Stays(preferredName))
 preferredServerName = null;
 if (tries < Options.ReloginTries)
 await WaitReloginDelay(token);
@@ -717,7 +725,7 @@ else
 ConnectIP(targetServer.IP);
 }
 }
-int watchdogTimeout = Math.Min(15000, Options.LoginTimeout > 0 ? Options.LoginTimeout : 15000);
+int watchdogTimeout = Stays(preferredName) ? 75000 : Math.Min(15000, Options.LoginTimeout > 0 ? Options.LoginTimeout : 15000);
 using CancellationTokenSource waitLogin = new(watchdogTimeout);
 try
 {
@@ -735,11 +743,12 @@ await Task.Delay(250, token);
 catch { }
 if (Player.Playing && Flash.IsWorldLoaded)
 {
+ConnectedServerName = targetServer.Name;
 ReloginLog($"Connected successfully to {targetServer.Name}. World loaded.");
 return true;
 }
 ReloginLog($"Try {tries}/{Options.ReloginTries} on {targetServer.Name} took too long, trying again...");
-if (ReloginFallbackEnabled)
+if (ReloginFallbackEnabled && !Stays(preferredName))
 preferredServerName = null;
 DisconnectForRelogin();
 if (tries < Options.ReloginTries)

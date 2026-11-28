@@ -68,7 +68,7 @@
     </UserControl.Styles>
     <Grid x:Name="RepoLayout" RowDefinitions="Auto,*,Auto" Margin="12" RowSpacing="10">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" IsEnabled="{Binding !IsBusy}">
-            <TextBox Classes="repo-search" Watermark="Search scripts by name, path or tag" Text="{Binding SearchText, Mode=TwoWay}">
+            <TextBox Classes="repo-search" PlaceholderText="Search scripts by name, path or tag" Text="{Binding SearchText, Mode=TwoWay}">
                 <TextBox.InnerLeftContent>
                     <materialIcons:MaterialIcon Kind="Magnify" Width="15" Height="15" Margin="10,0,0,0" Foreground="{DynamicResource SkuaMutedTextBrush}" />
                 </TextBox.InnerLeftContent>
@@ -205,6 +205,15 @@
                                         </ItemsControl>
                                     </StackPanel>
                                     <StackPanel Classes="repo-actions" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <Button Classes="skua-button skua-primary w90" Height="30" MinHeight="30"
+                                                IsVisible="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).IsPickMode}"
+                                                Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).PickScriptCommand}" CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Downloaded}" ToolTip.Tip="Use this script for Run on all clients">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <materialIcons:MaterialIcon Kind="CheckBold" Width="15" Height="15" />
+                                                <TextBlock Text="Use" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
                                         <Button Classes="skua-button skua-primary w90" Height="30" MinHeight="30"
                                                 IsVisible="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).ShowStartButton}"
                                                 Command="{Binding StartScriptCommand}" CommandParameter="{Binding .}"

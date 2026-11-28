@@ -572,9 +572,8 @@ Width = 420,
 SizeToContent = SizeToContent.Height,
 CanResize = false,
 WindowStartupLocation = WindowStartupLocation.CenterOwner,
-SystemDecorations = SystemDecorations.BorderOnly,
+WindowDecorations = WindowDecorations.BorderOnly,
 ExtendClientAreaToDecorationsHint = true,
-ExtendClientAreaChromeHints = global::Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome,
 ExtendClientAreaTitleBarHeightHint = 32,
 Classes = { "skua" }
 };

@@ -294,7 +294,7 @@ DropOldPageViews();
 foreach (Control child in PageHost.Children)
 child.IsVisible = child == view;
 if (_topLevel?.FocusManager is { } focus && focus.GetFocusedElement() is Control { IsEffectivelyVisible: false })
-focus.ClearFocus();
+focus.Focus(null, Avalonia.Input.NavigationMethod.Unspecified, Avalonia.Input.KeyModifiers.None);
 if (_landscape != false)
 ApplyKeyboardLandscape();
 if (page is null)

@@ -24,6 +24,8 @@ InitializeAssemblyResolvers();
 public static void Main(string[] args)
 {
 InitializeAssemblyResolvers();
+if (OperatingSystem.IsWindows())
+{
 VelopackApp.Build()
 .OnAfterInstallFastCallback(_ => AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: true))
 .OnAfterUpdateFastCallback(_ => AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: true))
@@ -31,6 +33,11 @@ VelopackApp.Build()
 .OnFirstRun(_ => AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: true))
 .OnRestarted(_ => AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: true))
 .Run();
+}
+else
+{
+VelopackApp.Build().Run();
+}
 const string eventName = @"Global\VibeSkua.Manager.SingleInstance.WakeEvent";
 bool createdNew;
 try

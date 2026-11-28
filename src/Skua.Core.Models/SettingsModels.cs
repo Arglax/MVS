@@ -189,6 +189,10 @@ UserPinnedScripts ??= new();
 }
 public class ClientSettings
 {
+[JsonPropertyName("ServerLatencyThresholdMs")]
+public int ServerLatencyThresholdMs { get; set; } = 200;
+[JsonPropertyName("ServerLatencyNearThresholdPercent")]
+public int ServerLatencyNearThresholdPercent { get; set; } = 75;
 [JsonPropertyName("AnimationFrameRate")]
 public int AnimationFrameRate { get; set; } = 60;
 [JsonPropertyName("ReloginTryDelay")]

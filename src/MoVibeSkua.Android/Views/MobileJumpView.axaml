@@ -64,8 +64,8 @@
                         </StackPanel>
                     </Border>
                     <Grid ColumnDefinitions="*,72,Auto" ColumnSpacing="6">
-                        <TextBox Grid.Column="0" Text="{Binding NewMap}" Watermark="Map, e.g. ultraalteon" />
-                        <TextBox Grid.Column="1" Text="{Binding NewRoom}" Watermark="Room" TextInputOptions.ContentType="Digits" />
+                        <TextBox Grid.Column="0" Text="{Binding NewMap}" PlaceholderText="Map, e.g. ultraalteon" />
+                        <TextBox Grid.Column="1" Text="{Binding NewRoom}" PlaceholderText="Room" TextInputOptions.ContentType="Digits" />
                         <Button Grid.Column="2" Classes="skua-button skua-primary" Command="{Binding AddSpotCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <materialIcons:MaterialIcon Kind="Plus" Width="15" Height="15" VerticalAlignment="Center" />
@@ -79,7 +79,7 @@
                     <Border IsVisible="{Binding IsRenaming}" Padding="8" CornerRadius="8" BorderThickness="1"
                             BorderBrush="{DynamicResource SkuaAccentBrush}">
                         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
-                            <TextBox Grid.Column="0" Text="{Binding RenameText}" Watermark="Name" />
+                            <TextBox Grid.Column="0" Text="{Binding RenameText}" PlaceholderText="Name" />
                             <Button Grid.Column="1" Classes="skua-button skua-primary" Command="{Binding SaveRenameCommand}" Content="Save" />
                             <Button Grid.Column="2" Classes="skua-button" Command="{Binding CancelRenameCommand}" Content="Cancel" />
                         </Grid>

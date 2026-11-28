@@ -108,8 +108,72 @@ Trace.WriteLine($"[Army] closing client {slot}'s task failed: {ex.Message}");
 }
 KeepAliveService.Release(context, slot);
 }
-public sealed record ClientStatus(int Slot, bool LoggedIn, string Name, string Map, string Script, bool ScriptRunning);
-private static string StatusDirectory => Path.Combine(global::Android.App.Application.Context.FilesDir!.AbsolutePath, "army");
+public sealed record ClientStatus(int Slot, bool LoggedIn, string Name, string Map, string Script, bool ScriptRunning,
+string RunAllId = "", string RunAll = "", string RunAllError = "");
+public sealed record Command(string Id, string Action, string Script, string Account, int[] Targets, long IssuedAt);
+public const string ActionStart = "start";
+public const string ActionStop = "stop";
+public const string ActionLogin = "login";
+private static string CommandPath => Path.Combine(StatusDirectory, "command.json");
+public static Command SendCommand(string action, string script, string account, IEnumerable<int> targets)
+{
+Command command = new(Guid.NewGuid().ToString("N"), action, script, account, new List<int>(targets).ToArray(),
+DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+string json = JsonSerializer.Serialize(command);
+lock (PublishGate)
+{
+WithIoRetry(() =>
+{
+Directory.CreateDirectory(StatusDirectory);
+string temp = CommandPath + $".{Slot}.tmp";
+File.WriteAllText(temp, json);
+File.Move(temp, CommandPath, true);
+return true;
+}, "write order");
+}
+Trace.WriteLine($"[RunAll] order id={command.Id[..8]} action={action} targets={string.Join(",", command.Targets)}");
+return command;
+}
+public static Command? ReadCommand()
+{
+if (!File.Exists(CommandPath))
+return null;
+try
+{
+string text = WithIoRetry(() => File.ReadAllText(CommandPath), "read order");
+return JsonSerializer.Deserialize<Command>(text);
+}
+catch
+{
+return null;
+}
+}
+private static T WithIoRetry<T>(Func<T> step, string what)
+{
+for (int attempt = 1; ; attempt++)
+{
+try
+{
+return step();
+}
+catch (Exception ex) when (attempt < 4 && ex is IOException or UnauthorizedAccessException)
+{
+Trace.WriteLine($"[RunAll] client {Slot} step=file try={attempt}/4 result=retry reason=FileBusy detail=\"{what}: {ex.GetType().Name}: {ex.Message}\"");
+System.Threading.Thread.Sleep(50 * attempt);
+}
+}
+}
+public static void ClearStatus(int slot)
+{
+try
+{
+File.Delete(StatusPath(slot));
+}
+catch
+{
+}
+}
+internal static string StatusDirectory => Path.Combine(global::Android.App.Application.Context.FilesDir!.AbsolutePath, "army");
 private static string StatusPath(int slot) => Path.Combine(StatusDirectory, $"client{slot}.json");
 private static readonly object PublishGate = new();
 public static void Publish(ClientStatus status)

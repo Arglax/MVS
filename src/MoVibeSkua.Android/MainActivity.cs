@@ -21,37 +21,12 @@ LaunchMode = LaunchMode.SingleTask,
 ScreenOrientation = ScreenOrientation.SensorLandscape,
 WindowSoftInputMode = SoftInput.AdjustResize,
 ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Keyboard | ConfigChanges.KeyboardHidden | ConfigChanges.Density)]
-public class MainActivity : AvaloniaMainActivity<App>
+public class MainActivity : AvaloniaMainActivity
 {
 public static MainActivity? Current { get; private set; }
-protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
-{
-builder = base.CustomizeAppBuilder(builder)
-.With(new Avalonia.Media.FontManagerOptions { DefaultFamilyName = "avares://MoVibeSkua/Images/fonts#Roboto" })
-.LogToTrace(Avalonia.Logging.LogEventLevel.Error);
-if (Platform.ArmyMemory.GpuResourceBytes is long gpuBytes)
-builder = builder.With(new SkiaOptions { MaxGpuResourceSizeBytes = gpuBytes });
-return builder;
-}
 protected override void OnCreate(Bundle? savedInstanceState)
 {
 Current = this;
-Skua.Flash.Ruffle.ControlChannel.IsUiThread = () => global::Android.OS.Looper.MyLooper() == global::Android.OS.Looper.MainLooper;
-try
-{
-Platform.Army.SeparateWebViewData();
-if (!System.Diagnostics.Trace.Listeners.OfType<Platform.LogcatTraceListener>().Any())
-System.Diagnostics.Trace.Listeners.Add(new Platform.LogcatTraceListener());
-Platform.LogcatLogMirror.Start();
-Diagnostics.AppLog.Start();
-Diagnostics.ProblemReports.Install();
-if (Platform.Army.IsFirst)
-Diagnostics.SelfTest.RunIfAsked();
-}
-catch (Exception ex)
-{
-System.Diagnostics.Trace.WriteLine($"[App] start-up helper failed: {ex}");
-}
 Platform.AndroidBootstrap.Prepare(this);
 base.OnCreate(savedInstanceState);
 HideFromScreenReaders();

@@ -78,6 +78,7 @@ private static void SetMainView(Control view)
 {
 try
 {
+App.MainView = view;
 if (Application.Current?.ApplicationLifetime is ISingleViewApplicationLifetime single && !ReferenceEquals(single.MainView, view))
 single.MainView = view;
 }

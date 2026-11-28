@@ -5,5 +5,6 @@ public interface IHotKeyService
 void Reload();
 List<T> GetHotKeys<T>()
 where T : IHotKey, new();
+List<string> GetAvailableHotKeyBindings() => new List<string>();
 HotKey? ParseToHotKey(string keyGesture);
 }

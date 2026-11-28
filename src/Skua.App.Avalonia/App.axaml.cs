@@ -184,7 +184,7 @@ MinHeight = 0,
 Width = 800,
 Height = 600,
 Position = new global::Avalonia.PixelPoint(-32000, -32000),
-SystemDecorations = global::Avalonia.Controls.SystemDecorations.None,
+WindowDecorations = global::Avalonia.Controls.WindowDecorations.None,
 ShowInTaskbar = false
 };
 desktop.MainWindow = mainChild;

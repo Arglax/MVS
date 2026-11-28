@@ -5,6 +5,18 @@
              xmlns:v="clr-namespace:MoVibeSkua.Android.Views"
              x:Class="MoVibeSkua.Android.Views.ArmyView"
              x:DataType="vm:ArmyViewModel">
+    <UserControl.Styles>
+        <Style Selector="Border.dim">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <Style Selector="TextBlock.runall">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#8BE28B" />
+        </Style>
+        <Style Selector="TextBlock.runall.failed">
+            <Setter Property="Foreground" Value="#F06E64" />
+        </Style>
+    </UserControl.Styles>
     <ThemeVariantScope RequestedThemeVariant="Dark">
         <Border Classes="aqw-page">
             <v:InfoHost>
@@ -28,6 +40,78 @@
                                    IsVisible="{Binding Warning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         <TextBlock Classes="page-sub" Text="{Binding Status}"
                                    IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <Border Classes="page-band"><TextBlock Text="RUN ON ALL CLIENTS" /></Border>
+                        <Border Classes="page-card" IsVisible="{Binding !IsPickerOpen}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Classes="page-name" Text="{Binding RunTitle}" TextWrapping="Wrap" />
+                                <TextBlock Classes="page-sub" Text="{Binding RunDetail}" TextWrapping="Wrap"
+                                           IsVisible="{Binding RunDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <TextBlock Classes="page-sub" Text="{Binding OptionsHint}" />
+                            </StackPanel>
+                        </Border>
+                        <UniformGrid Rows="1" Margin="-3,0,-3,6" IsVisible="{Binding !IsPickerOpen}">
+                            <Panel Margin="3,0">
+                                <Button Classes="guide-action" HorizontalAlignment="Stretch" Content="Run on all clients"
+                                        IsVisible="{Binding !IsRunning}" Command="{Binding OpenRunAllCommand}" />
+                                <Button Classes="guide-action" HorizontalAlignment="Stretch" Content="Cancel"
+                                        IsVisible="{Binding IsRunning}" Command="{Binding CancelRunCommand}" />
+                            </Panel>
+                            <Button Classes="guide-jump" Margin="3,0" HorizontalAlignment="Stretch" Content="Stop on all"
+                                    Command="{Binding StopRunAllCommand}" />
+                        </UniformGrid>
+                        <Button Classes="guide-action" HorizontalAlignment="Stretch" Margin="0,0,0,6" Content="Retry failed"
+                                IsVisible="{Binding CanRetry}" Command="{Binding RetryFailedCommand}" />
+                        <StackPanel IsVisible="{Binding IsPickerOpen}" Spacing="4" Margin="0,0,0,6">
+                            <Border Classes="page-band"><TextBlock Text="1. SCRIPT" /></Border>
+                            <StackPanel IsVisible="{Binding HasRecentScripts}" Spacing="3">
+                                <TextBlock Classes="page-sub" Text="Recent army scripts" />
+                                <ItemsControl ItemsSource="{Binding RecentScripts}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:RecentScriptItem">
+                                            <Button Classes="guide-jump" Margin="0,0,4,4" Content="{Binding Name}"
+                                                    Command="{Binding $parent[ItemsControl].((vm:ArmyViewModel)DataContext).UseRecentCommand}"
+                                                    CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <Border Classes="page-card">
+                                <StackPanel Spacing="1">
+                                    <TextBlock Classes="page-name" Text="{Binding RunScriptName}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="page-sub" Text="{Binding RunScriptHint}" />
+                                </StackPanel>
+                            </Border>
+                            <Button Classes="guide-jump" HorizontalAlignment="Stretch" Content="Search scripts..."
+                                    Command="{Binding ChooseScriptCommand}" />
+                            <Border Classes="page-band"><TextBlock Text="{Binding TeamTitle}" /></Border>
+                            <ItemsControl ItemsSource="{Binding Team}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:RunAllTeamItem">
+                                        <Border Classes="page-card" Classes.dim="{Binding !IsEnabled}">
+                                            <CheckBox IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}">
+                                                <StackPanel Spacing="1">
+                                                    <TextBlock Classes="page-name" Text="{Binding Name}" />
+                                                    <TextBlock Classes="page-sub" Text="{Binding Detail}" />
+                                                </StackPanel>
+                                            </CheckBox>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border Classes="page-note" IsVisible="{Binding RoomText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Classes="page-sub" Text="{Binding RoomText}" Foreground="#F7C948" TextWrapping="Wrap" />
+                            </Border>
+                            <TextBlock Classes="page-sub" Text="{Binding OptionsHint}" />
+                            <UniformGrid Rows="1" Margin="-3,0">
+                                <Button Classes="guide-action" Margin="3,0" HorizontalAlignment="Stretch" Content="Start"
+                                        Command="{Binding StartRunAllCommand}" />
+                                <Button Classes="guide-jump" Margin="3,0" HorizontalAlignment="Stretch" Content="Cancel"
+                                        Command="{Binding CancelRunAllCommand}" />
+                            </UniformGrid>
+                        </StackPanel>
                         <Border Classes="page-band"><TextBlock Text="CLIENTS" /></Border>
                         <ItemsControl ItemsSource="{Binding Clients}">
                             <ItemsControl.ItemTemplate>
@@ -46,6 +130,9 @@
                                                                                 Foreground="#8BE28B" IsVisible="{Binding IsScriptRunning}" />
                                                     <TextBlock Classes="page-sub" Text="{Binding ScriptText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
+                                                <TextBlock Classes="page-sub runall" Classes.failed="{Binding IsRunAllFailed}" Text="{Binding RunAllText}"
+                                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                           IsVisible="{Binding RunAllText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </StackPanel>
                                             <Button Grid.Column="1" Classes="guide-action" VerticalAlignment="Center" MinWidth="76" Content="Switch"
                                                     IsVisible="{Binding CanSwitch}"

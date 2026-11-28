@@ -9,11 +9,7 @@ private static IntPtr _class;
 private static IntPtr Class()
 {
 if (_class == IntPtr.Zero)
-{
-IntPtr local = JNIEnv.FindClass("com/arglax/movibeskua/ShizukuShell");
-_class = JNIEnv.NewGlobalRef(local);
-JNIEnv.DeleteLocalRef(local);
-}
+_class = JNIEnv.FindClass("com/arglax/movibeskua/ShizukuShell");
 return _class;
 }
 private static bool CallBool(string name)

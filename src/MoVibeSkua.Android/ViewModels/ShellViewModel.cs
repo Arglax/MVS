@@ -319,7 +319,18 @@ _jumpPage = new MobileJumpViewModel(MainMenu.JumpViewModel, fastTravel, _bot);
 return _jumpPage;
 }
 private void OpenArmy() => ShowPage("Army", "Army", ArmyPage());
-private ArmyViewModel ArmyPage() => _armyPage ??= new ArmyViewModel(() => IsStreamerMode, Ioc.Default.GetRequiredService<IDialogService>());
+private ArmyViewModel ArmyPage() => _armyPage ??= new ArmyViewModel(() => IsStreamerMode, Ioc.Default.GetRequiredService<IDialogService>(), PickArmyScript);
+private void PickArmyScript(Action<string> picked)
+{
+ScriptRepoViewModel repo = Ioc.Default.GetRequiredService<ScriptRepoViewModel>();
+ClosePage("Script Repo");
+repo.BeginPick(path =>
+{
+ClosePage("Script Repo");
+picked(path);
+});
+ShowPage("Script Repo", "Pick a script for Run on all", repo, repo.EndPick);
+}
 public List<object> BotPagesToPrepare()
 {
 List<object> pages = new();
@@ -732,7 +743,10 @@ string map = loggedIn ? _bot.Map.Name : string.Empty;
 text = loggedIn ? $"{name} · {map} · {_bot.Player.Cell}" : "Not logged in";
 PostStreamerMode();
 IScriptManager scripts = Ioc.Default.GetRequiredService<IScriptManager>();
-Army.Publish(new Army.ClientStatus(Army.Slot, loggedIn, realName, map, scripts.LoadedScript ?? string.Empty, scripts.ScriptRunning));
+Platform.ArmyRunAll.Poll(loggedIn);
+(string runId, string runState, string runError) = Platform.ArmyRunAll.Report(scripts.ScriptRunning);
+Army.Publish(new Army.ClientStatus(Army.Slot, loggedIn, realName, map, scripts.LoadedScript ?? string.Empty, scripts.ScriptRunning,
+runId, runState, runError));
 }
 catch
 {

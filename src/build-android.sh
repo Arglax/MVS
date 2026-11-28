@@ -23,6 +23,10 @@ for plugin in Skua.Plugin.DailyTracker Skua.Plugin.ButlerV5 Skua.Plugin.Cosmetic
 done
 SIGN_ARGS=()
 if [ "$CONFIG" = "Release" ]; then
+  if [ ! -s MoVibeSkua.Android/firebase.json ]; then
+    echo "Release build: MoVibeSkua.Android/firebase.json is missing; copy it from the main checkout." >&2
+    exit 1
+  fi
   PROPS="signing/signing.properties"
   if [ ! -f "$PROPS" ]; then
     echo "Release build: $PROPS is missing (storeFile, storePassword, keyAlias, keyPassword)." >&2

@@ -1169,8 +1169,7 @@ if (!Compiler.IsLoaded(compiledPath))
 {
 try
 {
-using FileStream stream = File.OpenRead(compiledPath);
-Assembly loadedAssembly = loadContext.LoadFromStream(stream);
+if (Compiler.LoadCachedWithRetry(compiledPath, loadContext) is { } loadedAssembly)
 Compiler.RegisterLoaded(compiledPath, loadedAssembly);
 }
 catch

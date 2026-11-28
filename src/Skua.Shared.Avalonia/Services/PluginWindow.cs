@@ -38,9 +38,8 @@ Content = view,
 };
 if (ownTitleBar)
 {
-_window.SystemDecorations = SystemDecorations.BorderOnly;
+_window.WindowDecorations = WindowDecorations.BorderOnly;
 _window.ExtendClientAreaToDecorationsHint = true;
-_window.ExtendClientAreaChromeHints = global::Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
 _window.ExtendClientAreaTitleBarHeightHint = 32;
 }
 _window.Classes.Add("skua");

@@ -147,7 +147,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
-    <Style Selector="Button.skua-button">
+    <Style Selector="Button.skua-button, ToggleButton.skua-button">
         <Setter Property="Height" Value="32" />
         <Setter Property="Padding" Value="12,0" />
         <Setter Property="CornerRadius" Value="12" />
@@ -161,7 +161,7 @@
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
-    <Style Selector="Button.skua-button /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.skua-button /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.skua-button /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.08" Easing="CubicEaseOut" />
@@ -170,14 +170,22 @@
             </Transitions>
         </Setter>
     </Style>
-    <Style Selector="Button.skua-button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.skua-button:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.skua-button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{CompiledBinding $parent[Button].(buttons:HoverGlow.Fill)}" />
         <Setter Property="BorderBrush" Value="{CompiledBinding $parent[Button].(buttons:HoverGlow.Edge)}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
-    <Style Selector="Button.skua-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.skua-button:pressed /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.skua-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaPressedBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.skua-button">
+        <Setter Property="buttons:HoverGlow.Enabled" Value="True" />
+    </Style>
+    <Style Selector="ToggleButton.skua-button:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaAccentTintBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
     <Style Selector="Button.small, ToggleButton.small">
@@ -411,7 +419,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
-    <Style Selector="Button.skua-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.skua-button:disabled /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.skua-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />

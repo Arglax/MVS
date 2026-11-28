@@ -66,10 +66,10 @@
                     BorderBrush="{DynamicResource SkuaBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="9">
                     <TextBlock Text="{Binding FormTitle}" FontWeight="SemiBold" FontSize="16" />
-                    <TextBox Text="{Binding Username}" Watermark="Username"
+                    <TextBox Text="{Binding Username}" PlaceholderText="Username"
                              TextInputOptions.AutoCapitalization="False" TextInputOptions.ShowSuggestions="False" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-                        <TextBox Grid.Column="0" Text="{Binding Password}" Watermark="Password" PasswordChar="•"
+                        <TextBox Grid.Column="0" Text="{Binding Password}" PlaceholderText="Password" PasswordChar="•"
                                  RevealPassword="{Binding #ShowPassword.IsChecked}"
                                  TextInputOptions.ContentType="Password" TextInputOptions.IsSensitive="True"
                                  TextInputOptions.AutoCapitalization="False" TextInputOptions.ShowSuggestions="False" />

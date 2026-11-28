@@ -50,7 +50,13 @@ Dispatcher.UIThread.Post(() => ArmyShell.Attach());
 }
 if (Volatile.Read(ref _petsHidden) == 1)
 _ = Task.Run(ShowOtherPets);
+if (Skua.Flash.Ruffle.RuffleHost.SkipGearDownloads)
+{
+Skua.Flash.Ruffle.RuffleHost.SkipGearDownloads = false;
+Trace.WriteLine($"[ArmyMemory] client {Army.Slot} gear downloads on (skipped {Skua.Flash.Ruffle.RuffleHost.GearSkipped} so far)");
 }
+}
+private static bool SkipGearWhenHidden => !Army.IsFirst && RamGB < 16;
 private static async Task DetachLaterAsync(int generation)
 {
 try
@@ -191,6 +197,11 @@ return;
 Task lowMem = LowMemAsync(generation);
 if (HidePetsWhenHidden)
 HideOtherPets(generation);
+if (SkipGearWhenHidden && generation == Volatile.Read(ref _generation))
+{
+Skua.Flash.Ruffle.RuffleHost.SkipGearDownloads = true;
+Trace.WriteLine($"[ArmyMemory] client {Army.Slot} gear downloads off while hidden");
+}
 GC.Collect(2, GCCollectionMode.Forced, blocking: true);
 GC.WaitForPendingFinalizers();
 Java.Lang.JavaSystem.Gc();

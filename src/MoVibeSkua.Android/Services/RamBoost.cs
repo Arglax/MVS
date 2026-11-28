@@ -53,10 +53,10 @@ catch (Exception e) { global::Android.Util.Log.Warn("MVS", "auto boost: " + e.Me
 }
 public static void TrimSelf()
 {
-GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+GC.Collect(2, GCCollectionMode.Forced, blocking: true);
 GC.WaitForPendingFinalizers();
-GC.Collect();
-Java.Lang.Runtime.GetRuntime()?.Gc();
+GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+Java.Lang.JavaSystem.Gc();
 }
 private static RamBoostResult? Boost()
 {

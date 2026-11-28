@@ -63,7 +63,7 @@ if (!file.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || !File.Exists(fi
 continue;
 byte[] contents = File.ReadAllBytes(file);
 string hash = Hash(contents);
-if (Approved().Contains(hash))
+if (Approved().Contains(hash) || ApprovedElsewhere(hash))
 continue;
 string full = Path.GetFullPath(file);
 Standing standing = Standing.Unofficial;
@@ -166,6 +166,15 @@ Save(LedgerFile, ledger);
 catch (Exception ex)
 {
 Trace.WriteLine($"[Trust] first-run record failed: {ex.Message}");
+}
+}
+private static bool ApprovedElsewhere(string hash)
+{
+lock (_lock)
+{
+HashSet<string> fresh = new(Load<List<string>>(ApprovedFile) ?? new List<string>(), StringComparer.OrdinalIgnoreCase);
+_approved = fresh;
+return fresh.Contains(hash);
 }
 }
 private static HashSet<string> Approved()

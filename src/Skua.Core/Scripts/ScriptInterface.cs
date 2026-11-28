@@ -26,6 +26,7 @@ private readonly ILogService _logger;
 private readonly IDialogService _dialogService;
 private readonly ISettingsService _settingsService;
 private bool _playerDead;
+private volatile bool _watchdogSessionEstablished;
 public bool ShouldExit => Manager.ShouldExit;
 public Version Version { get; }
 public IScriptStatus Manager { get; }
@@ -288,6 +289,7 @@ equippedClass?.ID ?? 0, currentClassPoints, classPointsToRank, Player.CurrentCla
 });
 if (currentInGame)
 {
+_watchdogSessionEstablished = true;
 wasPlaying = true;
 _playedThisRun = true;
 _reloginNotOursLogged = false;
@@ -313,7 +315,10 @@ else
 {
 catching = false;
 if (wasPlaying || Manager.ScriptRunning)
+{
 Messenger.Send<PlayerDisconnectedMessage, int>(new(), (int)MessageChannels.GameEvents);
+_watchdogSessionEstablished = false;
+}
 if ((wasPlaying || Manager.ScriptRunning) && !_waitForLogin && !Servers.IsIntentionalLogout && (Options.AutoRelogin || (Manager.ScriptRunning && !ScriptOption.ReloginAllowed)) && WatchdogEnabled)
 {
 wasPlaying = false;
@@ -399,8 +404,9 @@ return (Environment.TickCount, connDetail);
 }
 if (connDetail != lastConnDetail)
 Trace.WriteLine($"[Login] game says: \"{OneLine(connDetail)}\" (in game: {Player.Playing}, script: {Manager.ScriptRunning}, re-login: {(ScriptOption.ReloginAllowed ? (Options.AutoRelogin ? "on" : "allowed, not armed") : "off")})");
-if (connDetail.Contains("has been lost") && !_waitForLogin)
+if (connDetail.Contains("has been lost") && !_waitForLogin && _watchdogSessionEstablished)
 {
+_watchdogSessionEstablished = false;
 if (connDetail != lastConnDetail)
 {
 Messenger.Send<PlayerDisconnectedMessage, int>(new(), (int)MessageChannels.GameEvents);
@@ -435,7 +441,7 @@ Log(known
 }
 return (Environment.TickCount, "null");
 }
-else if (Environment.TickCount - lastConnChange >= Options.LoadTimeout && connDetail == lastConnDetail && !_waitForLogin)
+else if (Environment.TickCount - lastConnChange >= Options.LoadTimeout && connDetail == lastConnDetail && !_waitForLogin && _watchdogSessionEstablished)
 {
 if (connDetail.Contains("loading map"))
 {
@@ -518,12 +524,16 @@ case "loaded":
 Initialize();
 break;
 case "connectionLost":
+if (!_watchdogSessionEstablished)
+{
+Log("Flash socket connection lost during login; leaving the current login attempt alone.");
+break;
+}
+_watchdogSessionEstablished = false;
 Messenger.Send<PlayerDisconnectedMessage, int>(new(), (int)MessageChannels.GameEvents);
 Log("Flash socket connection lost event received.");
 if (!_waitForLogin && !Servers.IsIntentionalLogout && (Options.AutoRelogin || (Manager.ScriptRunning && !ScriptOption.ReloginAllowed)) && WatchdogEnabled)
-{
 BeginLogout();
-}
 break;
 case "userIntentionalAction":
 if (args is { Length: > 0 } && args[0] is string action)
@@ -545,8 +555,9 @@ if (Manager.ScriptRunning)
 _ = Manager.StopScript();
 break;
 case "selectServer":
-Log("Server chosen by user on server list. Watchdog armed.");
+Log("Server selected by user. Waiting for login to complete before arming the disconnect watchdog.");
 Servers.IsIntentionalLogout = false;
+_watchdogSessionEstablished = false;
 break;
 }
 }
@@ -725,6 +736,7 @@ Messenger.Send<PlayerAFKMessage, int>((int)MessageChannels.GameEvents);
 break;
 case "loginResponse":
 _playerDead = false;
+_watchdogSessionEstablished = true;
 if (Flash.IsWorldLoaded)
 Stats.GetSpace();
 Options.CustomName = string.Empty;
@@ -858,6 +870,7 @@ _reloginCTS = null;
 }
 _reloginTask = null;
 _waitForLogin = false;
+_watchdogSessionEstablished = false;
 }
 private static readonly int[] ReloginBackoffMinutes = { 2, 5, 15, 30 };
 private int _reloginFailedRounds;
@@ -922,6 +935,7 @@ bool wasRunning = Manager.ScriptRunning;
 CancellationTokenSource reloginCts = new();
 _reloginCTS = reloginCts;
 _waitForLogin = true;
+_watchdogSessionEstablished = false;
 try
 {
 if (!logoutNotified)

@@ -58,6 +58,89 @@ public const string Source = """
                 string name = global::System.IO.Path.GetFileName(path).ToLowerInvariant();
                 return string.IsNullOrEmpty(dir) ? name : global::System.IO.Path.Combine(dir, name);
             }
+            // Targets of File.WriteAllText/Lines/Bytes (rewritten by the compiler): the new content goes
+            // to a temporary file that is then renamed over the old one, so another client reading at the
+            // same moment sees the old file or the new one, never an empty one. Writers also take turns
+            // through a lock file, as they do on Windows.
+            public static void WriteAllText(string path, string contents) =>
+                Replace(path, tmp => global::System.IO.File.WriteAllText(tmp, contents), () => global::System.IO.File.WriteAllText(path, contents));
+            public static void WriteAllText(string path, string contents, global::System.Text.Encoding encoding) =>
+                Replace(path, tmp => global::System.IO.File.WriteAllText(tmp, contents, encoding), () => global::System.IO.File.WriteAllText(path, contents, encoding));
+            public static void WriteAllLines(string path, string[] contents) =>
+                Replace(path, tmp => global::System.IO.File.WriteAllLines(tmp, contents), () => global::System.IO.File.WriteAllLines(path, contents));
+            public static void WriteAllLines(string path, global::System.Collections.Generic.IEnumerable<string> contents)
+            {
+                string[] lines = global::System.Linq.Enumerable.ToArray(contents);
+                WriteAllLines(path, lines);
+            }
+            public static void WriteAllLines(string path, string[] contents, global::System.Text.Encoding encoding) =>
+                Replace(path, tmp => global::System.IO.File.WriteAllLines(tmp, contents, encoding), () => global::System.IO.File.WriteAllLines(path, contents, encoding));
+            public static void WriteAllLines(string path, global::System.Collections.Generic.IEnumerable<string> contents, global::System.Text.Encoding encoding)
+            {
+                string[] lines = global::System.Linq.Enumerable.ToArray(contents);
+                WriteAllLines(path, lines, encoding);
+            }
+            public static void WriteAllBytes(string path, byte[] bytes) =>
+                Replace(path, tmp => global::System.IO.File.WriteAllBytes(tmp, bytes), () => global::System.IO.File.WriteAllBytes(path, bytes));
+            private static void Replace(string path, global::System.Action<string> writeTemp, global::System.Action writeDirect)
+            {
+                string full;
+                try { full = global::System.IO.Path.GetFullPath(path); }
+                catch { writeDirect(); return; }
+                string tmp = full + "." + global::System.Environment.ProcessId + "." + global::System.Environment.CurrentManagedThreadId + ".tmp";
+                global::System.IO.FileStream gate = null;
+                try
+                {
+                    // FileShare.None is an exclusive lock between processes on Android too; give up on
+                    // the turn after about a second rather than hang the script.
+                    for (int i = 0; i < 40 && gate is null; i++)
+                    {
+                        try { gate = new global::System.IO.FileStream(full + ".lock", global::System.IO.FileMode.OpenOrCreate, global::System.IO.FileAccess.ReadWrite, global::System.IO.FileShare.None); }
+                        catch (global::System.IO.IOException) { global::System.Threading.Thread.Sleep(25); }
+                        catch { break; }
+                    }
+                    writeTemp(tmp);
+                    global::System.IO.File.Move(tmp, full, true);
+                }
+                catch (global::System.UnauthorizedAccessException)
+                {
+                    TryDelete(tmp);
+                    writeDirect();
+                }
+                catch (global::System.IO.IOException)
+                {
+                    TryDelete(tmp);
+                    writeDirect();
+                }
+                finally
+                {
+                    gate?.Dispose();
+                }
+            }
+            private static void TryDelete(string file)
+            {
+                try { global::System.IO.File.Delete(file); } catch { }
+            }
+            // Target of Environment.MachineName (rewritten by the compiler): during a Run on all, the team's
+            // room (VibeSkua/army-room.txt), the same in every client; otherwise the real name.
+            public static string MachineName
+            {
+                get
+                {
+                    try
+                    {
+                        string file = global::System.IO.Path.Combine(global::Skua.Core.Models.ClientFileSources.SkuaDIR, "army-room.txt");
+                        if (global::System.IO.File.Exists(file))
+                        {
+                            string room = global::System.IO.File.ReadAllText(file).Trim();
+                            if (room.Length > 0)
+                                return "MVS-ARMY-" + room;
+                        }
+                    }
+                    catch { }
+                    return global::System.Environment.MachineName;
+                }
+            }
             public static global::System.Diagnostics.Process Open(string target)
             {
                 global::Skua.Core.Utils.Link.OpenBrowser((target ?? string.Empty).Trim().Trim('"'));

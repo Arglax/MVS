@@ -136,7 +136,7 @@
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="class-picker">
               <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Width="300" Height="450" RowSpacing="6">
-                <TextBox x:Name="ClassSearchBox" Grid.Row="0" Watermark="Search classes"
+                <TextBox x:Name="ClassSearchBox" Grid.Row="0" PlaceholderText="Search classes"
                          Text="{Binding ClassSearch, Mode=TwoWay}" />
                 <UniformGrid Grid.Row="1" Columns="3" Rows="2">
                   <Button Classes="sort" Margin="0,0,3,3" Content="A–Z" Command="{Binding SetClassSortCommand}" CommandParameter="A-Z"
@@ -198,7 +198,7 @@
                CornerRadius="6"
                VerticalContentAlignment="Center"
                Text="{Binding ManualMapIDs, UpdateSourceTrigger=PropertyChanged}"
-               Watermark="Manual MapIDs (optional, e.g. 1, 2)"
+               PlaceholderText="Manual MapIDs (optional, e.g. 1, 2)"
                ToolTip.Tip="Enter MapIDs separated by commas for priority targeting (e.g. 12345, 67890). First available monster in the list will be attacked." />
       <Border CornerRadius="6" Padding="8,6" Background="{DynamicResource SkuaSurfaceAltBrush}"
               IsVisible="{Binding Auto.TargetInfo, Converter={x:Static ObjectConverters.IsNotNull}}">
